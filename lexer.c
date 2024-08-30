@@ -11,11 +11,11 @@ typedef enum TokenType {
 
 typedef struct Token {
     TokenType type;
-    char value[50];
+    char* value;
 } Token;
 
 //TODO: static arrays for now, will implement dynamic later.
-void lex(Token* tokens, char* file_text) {
+void lex(Token** tokens, char* file_text) {
     // A "word" is a string that corresponds to a token.
     char words[256][50] = {0}; 
     int words_index = 0;
@@ -57,9 +57,33 @@ void lex(Token* tokens, char* file_text) {
     end_loop:
 
     for (int i = 0; i < 255; i++) {
-        if (strncmp(words[i], "int", 50) == 0) {
-            tokens[i].type = KEYWORD;
-            strcpy(tokens[i].value, "int");
+        if (strncmp(words[i], "int", 3) == 0) {
+            tokens[i]->type = KEYWORD;
+            strncpy(tokens[i]->value, "int", 3);
+        } else if (strncmp(words[i], "return", 6) == 0) {
+            tokens[i]->type = KEYWORD;
+            strncpy(tokens[i]->value, "return", 6);
+        } else if (strncmp(words[i], "main", 5) == 0) {
+            tokens[i]->type = IDENTIFIER;
+            strncpy(tokens[i]->value, "main", 5);
+        } else if (strncmp(words[i], "(", 1) == 0) {
+            tokens[i]->type = PUNCTUATOR;
+            strncpy(tokens[i]->value, "(", 1);
+        } else if (strncmp(words[i], ")", 1) == 0) {
+            tokens[i]->type = PUNCTUATOR;
+            strncpy(tokens[i]->value, ")", 1);
+        } else if (strncmp(words[i], "{", 1) == 0) {
+            tokens[i]->type = PUNCTUATOR;
+            strncpy(tokens[i]->value, "{", 1);
+        } else if (strncmp(words[i], "}", 1) == 0) {
+            tokens[i]->type = PUNCTUATOR;
+            strncpy(tokens[i]->value, "}", 1);
+        } else if (strncmp(words[i], ";", 1) == 0) {
+            tokens[i]->type = PUNCTUATOR;
+            strncpy(tokens[i]->value, ";", 1);
+        } else {
+            tokens[i]->type = INVALID;
+            strncpy(tokens[i]->value, words[i], 50);
         }
     }
 }

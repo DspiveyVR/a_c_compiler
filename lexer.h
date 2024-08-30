@@ -7,6 +7,7 @@ typedef enum TokenType {
     CONSTANT,
     STRING_LITERAL,
     PUNCTUATOR, 
+    INVALID,
 } TokenType;
 
 typedef struct Token {
@@ -15,6 +16,6 @@ typedef struct Token {
 } Token;
 
 
-void lex(Token* tokens, char* file_text);
+void lex(Token** tokens, char* file_text);
 
 #endif
