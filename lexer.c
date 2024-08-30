@@ -1,13 +1,22 @@
-#include <stdio.h>
 #include <string.h>
 
+typedef enum TokenType {
+    KEYWORD,
+    IDENTIFIER,
+    CONSTANT,
+    STRING_LITERAL,
+    PUNCTUATOR, 
+    INVALID,
+} TokenType;
+
 typedef struct Token {
-    /* data */
+    TokenType type;
+    char value[50];
 } Token;
 
 //TODO: static arrays for now, will implement dynamic later.
-void lex(char* file_text) {
-// void lex(Token** tokens, char* file_text) {
+void lex(Token* tokens, char* file_text) {
+    // A "word" is a string that corresponds to a token.
     char words[256][50] = {0}; 
     int words_index = 0;
 
@@ -21,11 +30,24 @@ void lex(char* file_text) {
             case ' ':
             case '\t':
             case '\n':
+                // Ensures that no empty words are added.
+                if (strncmp(word, "", 50) == 0) {
+                    continue;
+                }
                 memcpy(words[words_index], word, 50);
                 memset(word, 0, 50);
                 word_index = 0;
                 words_index++;
                 continue;
+            case '(':
+            case ')':
+            case '{':
+            case '}':
+            case ';':
+                memcpy(words[words_index], word, 50);
+                memset(word, 0, 50);
+                word_index = 0;
+                words_index++;
             default:
                 word[word_index] = file_text[file_index];
                 word_index++;
@@ -35,6 +57,9 @@ void lex(char* file_text) {
     end_loop:
 
     for (int i = 0; i < 255; i++) {
-        printf("%d %s ",i , words[i]);        
+        if (strncmp(words[i], "int", 50) == 0) {
+            tokens[i].type = KEYWORD;
+            strcpy(tokens[i].value, "int");
+        }
     }
 }

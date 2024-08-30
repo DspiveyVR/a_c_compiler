@@ -25,7 +25,9 @@ int main(int argc, char** argv) {
     }
     fclose(infile);
     // printf("%s\n", file_text);
-    lex(file_text);
+    Token tokens[256] = {0};
+    lex(tokens, file_text);
+
 
     return 0;
 }
