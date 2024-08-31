@@ -34,21 +34,21 @@ int main(int argc, char** argv) {
     //     tokens[i] = (Token*)malloc(sizeof(Token));
     //     tokens[i]->value = (char*)malloc(50);
     // }
-    lex(tokens, file_text);
+    // TODO: perhaps make a none type for the token enum
+    TokenList tokens;
+    initialize_token_list(&tokens, 6);
 
-    for (int i = 0; i < 10; i++) {
+    lex(&tokens, file_text);
+
+    for (int i = 0; i < tokens.length; i++) {
         // strncpy(tokens[i].value, "int", 3);
         char type[14] = "";
-        enum_to_str(type, tokens[i]->type);
+        enum_to_str(type, tokens.tokens[i]->type);
 
-        printf("%s %s\n", type, tokens[i]->value);
+        printf("%s %s\n", type, tokens.tokens[i]->value);
     }
 
-    for (int i = 0; i < 256; i++) {
-        free(tokens[i]->value);
-        free(tokens[i]);
-    }
-    free(tokens);
+    destroy_token_list(&tokens);
 
     return 0;
 }

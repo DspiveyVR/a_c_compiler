@@ -15,7 +15,15 @@ typedef struct Token {
     char* value;
 } Token;
 
+typedef struct TokenList {
+    Token** tokens;
+    int length;
+} TokenList;
 
-void lex(Token** tokens, char* file_text);
+void lex(TokenList* tokens, char* file_text);
+void initialize_token_list(TokenList* array, int length);
+void destroy_token_list(TokenList* array);
+void set_tklist_string(TokenList* array, int index, char* string);
+void set_tklist_type(TokenList* array, int index, TokenType type);
 
 #endif
