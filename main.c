@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "lexer.h"
+#include "dynamic_string.h"
 
 void enum_to_str(char* buf, TokenType type);
 
@@ -17,28 +18,23 @@ int main(int argc, char** argv) {
         exit(1);
     }
     // TODO: make dynamic
-    char file_text[0xffff] = {0};
-    for (int i = 0; i < 0xffff; i++) {
-        if (!feof(infile)) {
-            file_text[i] = fgetc(infile);
-        } else {
-            file_text[i - 1] = 0;
-            break;
-        }
-    }
+    // char file_text[0xffff] = {0};
+    String file_text;
+    initialize_string(&file_text, 20);
+    int i = 0;
+    while (!feof(infile)) {
+        set_char(&file_text, fgetc(infile), i);
+        i++;
+    } 
+    set_char(&file_text, 0, i);
     fclose(infile);
-    // printf("%s\n", file_text);
-    // Token** tokens = {0};
-    // tokens = (Token**)malloc(sizeof(Token**) * 256);
-    // for (int i = 0; i < 256; i++) {
-    //     tokens[i] = (Token*)malloc(sizeof(Token));
-    //     tokens[i]->value = (char*)malloc(50);
-    // }
+
     // TODO: perhaps make a none type for the token enum
     TokenList tokens;
-    initialize_token_list(&tokens, 6);
+    initialize_token_list(&tokens, 5);
 
-    lex(&tokens, file_text);
+    lex(&tokens, &file_text);
+    free(file_text.string);
 
     for (int i = 0; i < tokens.length; i++) {
         // strncpy(tokens[i].value, "int", 3);
@@ -72,6 +68,9 @@ void enum_to_str(char* buf, TokenType type) {
             break;
         case INVALID:
             strncpy(buf, "INVALID", 7);
+            break;
+        case NONE:
+            strncpy(buf, "NONE", 4);
             break;
     }
 }

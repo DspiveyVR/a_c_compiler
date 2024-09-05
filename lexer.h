@@ -1,7 +1,9 @@
 #ifndef LEXER_H
 #define LEXER_H
+#include "dynamic_string.h"
 
 typedef enum TokenType {
+    NONE,
     KEYWORD,
     IDENTIFIER,
     CONSTANT,
@@ -20,7 +22,7 @@ typedef struct TokenList {
     int length;
 } TokenList;
 
-void lex(TokenList* tokens, char* file_text);
+void lex(TokenList* tokens, String* file_text);
 void initialize_token_list(TokenList* array, int length);
 void destroy_token_list(TokenList* array);
 void set_tklist_string(TokenList* array, int index, char* string);
