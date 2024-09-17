@@ -17,8 +17,7 @@ int main(int argc, char** argv) {
         printf("error opening file\n");
         exit(1);
     }
-    // TODO: make dynamic
-    // char file_text[0xffff] = {0};
+
     String file_text;
     initialize_string(&file_text, 20);
     int i = 0;
