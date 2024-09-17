@@ -136,6 +136,7 @@ void destroy_token_list(TokenList* array) {
         free(array->tokens[i]->value);
         free(array->tokens[i]);
     }
+    free(array->tokens);
 }
 
 void set_tklist_string(TokenList* array, int index, char* string) {
@@ -167,15 +168,17 @@ void initialize_string_list(StringList* array, int length) {
     array->length = length;   
 
     for (int i = 0; i < length; i++) {
+        array->list[i] = (String*)malloc(sizeof(String*));
         initialize_string(array->list[i], 10);
     }
 }
 
 void destroy_string_list(StringList* array) {
     for (int i = 0; i < array->length; i++) {
+        free(array->list[i]->string);
         free(array->list[i]);
     }
-    free(array);
+    free(array->list);
 }
 
 void set_string_in_list(StringList* array, int index, char* string, int bytes) {
@@ -184,10 +187,10 @@ void set_string_in_list(StringList* array, int index, char* string, int bytes) {
         array->length += 5;
 
         for (int i = array->length - 5; i < array->length; i++) {
+            array->list[i] = (String*)malloc(sizeof(String*));
             initialize_string(array->list[i], 10);
         }
     }
 
-    
     set_string(array->list[index], string, bytes);
 }
