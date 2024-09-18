@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
         char type[14] = "";
         enum_to_str(type, tokens.tokens[i]->type);
 
-        printf("%s %d\n", type, tokens.tokens[i]->value[0]);
+        printf("%s %s\n", type, tokens.tokens[i]->value);
     }
 
     destroy_token_list(&tokens);

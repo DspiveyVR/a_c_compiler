@@ -1,6 +1,7 @@
+#include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <stdbool.h>
 #include "dynamic_string.h"
 
 typedef enum TokenType {
@@ -55,20 +56,23 @@ void lex(TokenList* tokens, String* file_text) {
             case '\t':
             case '\n':
                 // Ensures that no empty words are added.
-                if (strncmp(word.string, "", word.length) == 0) {
-                    continue;
-                }
+                /*if (strncmp(word.string, "", word.length) == 0) {*/
+                /*    continue;*/
+                /*}*/
 
                 set_string_in_list(&words, words_index, word.string, word.length);
                 memset(word.string, 0, word.length);
                 word_index = 0;
                 words_index++;
-                continue;
+                break;
             case '(':
             case ')':
             case '{':
             case '}':
             case ';':
+                /*if (strncmp(word.string, "", word.length) == 0) {*/
+                /*    continue;*/
+                /*}*/
                 set_string_in_list(&words, words_index, word.string, word.length);
                 memset(word.string, 0, word.length);
                 word_index = 0;
@@ -83,9 +87,20 @@ void lex(TokenList* tokens, String* file_text) {
     free(word.string);
 
     for (int i = 0; i < words_index; i++) {
+        bool isnumber = true;
+        for (int j = 0; j < words.list[i]->length; j++) {
+            if (!isdigit(words.list[i]->string[j]) 
+                && words.list[i]->string[j] != 0) {
+                isnumber = false;
+                break;
+            }
+        }
         if (strncmp(words.list[i]->string, "int", 3) == 0) {
             set_tklist_type(tokens, i, KEYWORD);
             set_tklist_string(tokens, i, "int");
+        } else if (isnumber) {
+            set_tklist_type(tokens, i, CONSTANT);
+            set_tklist_string(tokens, i, words.list[i]->string);
         } else if (strncmp(words.list[i]->string, "return", 6) == 0) {
             set_tklist_type(tokens, i, KEYWORD);
             set_tklist_string(tokens, i, "return");
