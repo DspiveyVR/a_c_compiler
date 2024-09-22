@@ -89,11 +89,18 @@ Node* parse_expression(TokenList* tokens) {
 
 Node* create_node() {
     Node* node = (Node*)malloc(sizeof(Node));
+    node->type = NONETYPE;
     node->lhs = NULL;
     node->rhs = NULL;
     return node;
 }
 
 void destroy_node(Node* node) {
-    //bals
+    if (node->lhs != NULL) {
+        destroy_node(node->lhs);
+    }
+    if (node->rhs != NULL) {
+        destroy_node(node->rhs);
+    }
+    free(node);
 }

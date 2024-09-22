@@ -10,10 +10,11 @@ typedef enum TokenType {
     IDENTIFIER,
     CONSTANT,
     STRING_LITERAL,
-    // FIXME: for types which have multiple subtypes, just make them into
-    // their own type so that you dont have to do stupid string comparisons.
-    // I.e. there should be a SEMICOLON variant.
-    PUNCTUATOR, 
+    LEFT_PARENTHESIS,
+    RIGHT_PARENTHESIS,
+    LEFT_BRACKET,
+    RIGHT_BRACKET,
+    SEMICOLON,
     PLUS,
     STAR,
     INVALID,
@@ -112,20 +113,15 @@ void lex(TokenList* tokens, String* file_text) {
             set_tklist_type(tokens, i, IDENTIFIER);
             set_tklist_string(tokens, i, "main");
         } else if (strncmp(words.list[i]->string, "(", 1) == 0) {
-            set_tklist_type(tokens, i, PUNCTUATOR);
-            set_tklist_string(tokens, i, "(");
+            set_tklist_type(tokens, i, LEFT_PARENTHESIS);
         } else if (strncmp(words.list[i]->string, ")", 1) == 0) {
-            set_tklist_type(tokens, i, PUNCTUATOR);
-            set_tklist_string(tokens, i, ")");
+            set_tklist_type(tokens, i, RIGHT_PARENTHESIS);
         } else if (strncmp(words.list[i]->string, "{", 1) == 0) {
-            set_tklist_type(tokens, i, PUNCTUATOR);
-            set_tklist_string(tokens, i, "{");
+            set_tklist_type(tokens, i, LEFT_BRACKET);
         } else if (strncmp(words.list[i]->string, "}", 1) == 0) {
-            set_tklist_type(tokens, i, PUNCTUATOR);
-            set_tklist_string(tokens, i, "}");
+            set_tklist_type(tokens, i, RIGHT_BRACKET);
         } else if (strncmp(words.list[i]->string, ";", 1) == 0) {
-            set_tklist_type(tokens, i, PUNCTUATOR);
-            set_tklist_string(tokens, i, ";");
+            set_tklist_type(tokens, i, SEMICOLON);
         } else if (strncmp(words.list[i]->string, "+", 1) == 0) {
             set_tklist_type(tokens, i, PLUS);
         } else if (strncmp(words.list[i]->string, "*", 1) == 0) {
