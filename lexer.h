@@ -9,6 +9,8 @@ typedef enum TokenType {
     CONSTANT,
     STRING_LITERAL,
     PUNCTUATOR, 
+    PLUS,
+    STAR,
     INVALID,
 } TokenType;
 

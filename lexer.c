@@ -10,7 +10,12 @@ typedef enum TokenType {
     IDENTIFIER,
     CONSTANT,
     STRING_LITERAL,
+    // FIXME: for types which have multiple subtypes, just make them into
+    // their own type so that you dont have to do stupid string comparisons.
+    // I.e. there should be a SEMICOLON variant.
     PUNCTUATOR, 
+    PLUS,
+    STAR,
     INVALID,
 } TokenType;
 
@@ -56,27 +61,26 @@ void lex(TokenList* tokens, String* file_text) {
             case '\t':
             case '\n':
                 // Ensures that no empty words are added.
-                /*if (strncmp(word.string, "", word.length) == 0) {*/
-                /*    continue;*/
-                /*}*/
-
-                set_string_in_list(&words, words_index, word.string, word.length);
-                memset(word.string, 0, word.length);
-                word_index = 0;
-                words_index++;
+                if (strncmp(word.string, "", word.length) != 0) {
+                    set_string_in_list(&words, words_index, word.string, word.length);
+                    memset(word.string, 0, word.length);
+                    word_index = 0;
+                    words_index++;
+                }
                 break;
             case '(':
             case ')':
             case '{':
             case '}':
             case ';':
-                /*if (strncmp(word.string, "", word.length) == 0) {*/
-                /*    continue;*/
-                /*}*/
-                set_string_in_list(&words, words_index, word.string, word.length);
-                memset(word.string, 0, word.length);
-                word_index = 0;
-                words_index++;
+            case '+':
+            case '*':
+                if (strncmp(word.string, "", word.length) != 0) {
+                    set_string_in_list(&words, words_index, word.string, word.length);
+                    memset(word.string, 0, word.length);
+                    word_index = 0;
+                    words_index++;
+                }
             default:
                 set_char(&word, file_text->string[file_index], word_index);
                 word_index++;
@@ -122,6 +126,10 @@ void lex(TokenList* tokens, String* file_text) {
         } else if (strncmp(words.list[i]->string, ";", 1) == 0) {
             set_tklist_type(tokens, i, PUNCTUATOR);
             set_tklist_string(tokens, i, ";");
+        } else if (strncmp(words.list[i]->string, "+", 1) == 0) {
+            set_tklist_type(tokens, i, PLUS);
+        } else if (strncmp(words.list[i]->string, "*", 1) == 0) {
+            set_tklist_type(tokens, i, STAR);
         } else {
             set_tklist_type(tokens, i, INVALID);
             set_tklist_string(tokens, i, words.list[i]->string);
