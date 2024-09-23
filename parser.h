@@ -5,6 +5,8 @@
 
 typedef enum NodeType {
     NONETYPE,
+    OPEN_PARENTHESIS,
+    CLOSE_PARENTHESIS,
     INTEGER,
     ADDITION,
     MULTIPLICATION,

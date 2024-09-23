@@ -41,13 +41,13 @@ int main(int argc, char** argv) {
 
     for (int i = 0; i < tokens.length; i++) {
         // strncpy(tokens[i].value, "int", 3);
-        char type[14] = "";
+        char type[20] = "";
         enum_to_str(type, tokens.tokens[i]->type);
 
         printf("%s %s\n", type, tokens.tokens[i]->value);
     }
 
-    destroy_token_list(&tokens);
+    /*destroy_token_list(&tokens);*/
 
     /*TokenList tokens;*/
     /*initialize_token_list(&tokens, 5);*/
@@ -59,19 +59,19 @@ int main(int argc, char** argv) {
     /*set_tklist_type(&tokens, 3, STAR);*/
     /*set_tklist_type(&tokens, 4, CONSTANT);*/
     /*set_tklist_string(&tokens, 4, "4");*/
-    /*Node* expression = parse_expression(&tokens);*/
-    /*destroy_token_list(&tokens);*/
-    /*print_exp(expression);*/
-    /*int result = eval_exp(expression);*/
-    /*destroy_node(expression);*/
-    /*printf("= %d", result);*/
-    /*printf("\n");*/
+    Node* expression = parse_expression(&tokens);
+    destroy_token_list(&tokens);
+    print_exp(expression);
+    int result = eval_exp(expression);
+    destroy_node(expression);
+    printf("= %d", result);
+    printf("\n");
 
     return 0;
 }
 
 void print_exp(Node* node) {
-    printf("(");
+    /*printf("(");*/
     if (node->lhs != NULL) {
         print_exp(node->lhs);
     }
@@ -85,6 +85,11 @@ void print_exp(Node* node) {
         case MULTIPLICATION:
             printf("*");
             break;
+        case OPEN_PARENTHESIS:
+            printf("(");
+            break;
+        case CLOSE_PARENTHESIS:
+            printf(")");
         case NONETYPE:
             printf("NONETYPE");
             break;
@@ -92,7 +97,7 @@ void print_exp(Node* node) {
     if (node->rhs != NULL) {
         print_exp(node->rhs);
     }
-    printf(")");
+    /*printf(")");*/
 }
 
 int eval_exp(Node* node) {
@@ -105,6 +110,11 @@ int eval_exp(Node* node) {
             break;
         case MULTIPLICATION:
             return eval_exp(node->lhs) * eval_exp(node->rhs);
+            break;
+        case OPEN_PARENTHESIS:
+            return eval_exp(node->rhs);
+            break;
+        case CLOSE_PARENTHESIS:
             break;
         case NONETYPE:
             return eval_exp(node->rhs);
@@ -135,17 +145,20 @@ void enum_to_str(char* buf, TokenType type) {
             strncpy(buf, "STRING_LITERAL", 15);
             break;
         case LEFT_PARENTHESIS:
-             strncpy(buf, "LEFT_PARENTHESIS", 17); 
-             break;
+            strncpy(buf, "LEFT_PARENTHESIS", 17); 
+            break;
         case RIGHT_PARENTHESIS:
-             strncpy(buf, "RIGHT_PARENTHESIS", 18);
-             break;
+            strncpy(buf, "RIGHT_PARENTHESIS", 18);
+            break;
         case LEFT_BRACKET:
-             strncpy(buf, "LEFT_BRACKET", 13);
-             break;
+            strncpy(buf, "LEFT_BRACKET", 13);
+            break;
         case RIGHT_BRACKET:
-             strncpy(buf, "RIGHT_BRACKET", 14);
-             break;
+            strncpy(buf, "RIGHT_BRACKET", 14);
+            break;
+        case SEMICOLON:
+            strncpy(buf, "SEMICOLON", 10);
+            break;
         case INVALID:
             strncpy(buf, "INVALID", 8);
             break;

@@ -5,6 +5,8 @@
 
 typedef enum NodeType {
     NONETYPE,
+    OPEN_PARENTHESIS,
+    CLOSE_PARENTHESIS,
     INTEGER,
     ADDITION,
     MULTIPLICATION,
@@ -33,6 +35,9 @@ Node* parse_expression(TokenList* tokens) {
         current_node.lhs = NULL;
         current_node.rhs = NULL;
 
+        // TODO: will need a stack of these
+        Node* left_paren_return = NULL;
+
         switch (tokens->tokens[i]->type) {
             case CONSTANT:
                 if (expression->type == NONETYPE) {
@@ -52,10 +57,14 @@ Node* parse_expression(TokenList* tokens) {
                 current_node.type = ADDITION;
                 current_node.precedence = 4;
                 if ((current_node.precedence > focus_node->precedence) ||
-                        (focus_node->type == INTEGER)) {
+                        (focus_node->type == INTEGER) || 
+                        (left_paren_return != NULL)) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
+                    if (left_paren_return != NULL) {
+                        left_paren_return = NULL;
+                    }
                 } else {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *(focus_node->rhs);
@@ -69,16 +78,40 @@ Node* parse_expression(TokenList* tokens) {
                 current_node.type = MULTIPLICATION;
                 current_node.precedence = 3;
                 if ((current_node.precedence > focus_node->precedence) ||
-                        (focus_node->type == INTEGER)) {
+                        (focus_node->type == INTEGER) || 
+                        (left_paren_return != NULL)) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
+                    if (left_paren_return != NULL) {
+                        left_paren_return = NULL;
+                    }
                 } else {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *(focus_node->rhs);
                     *(focus_node->rhs) = current_node;
                     focus_node = focus_node->rhs;
                 }
+                break;
+            case LEFT_PARENTHESIS:
+                if (expression->type == NONETYPE) {
+                    expression->type = OPEN_PARENTHESIS;
+                    expression->precedence = 16;
+                    continue;
+                }
+                current_node.type = OPEN_PARENTHESIS;
+                current_node.precedence = 16;
+                focus_node->rhs = create_node();
+                *(focus_node->rhs) = current_node;
+                focus_node = focus_node->rhs;
+                left_paren_return = focus_node;
+                break;
+            case RIGHT_PARENTHESIS:
+                current_node.type = CLOSE_PARENTHESIS;
+                current_node.precedence = 16;
+                focus_node->rhs->rhs = create_node();
+                *(focus_node->rhs->rhs) = current_node;
+                focus_node = left_paren_return;
                 break;
             case NONE:
                 return expression;
