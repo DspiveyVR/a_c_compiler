@@ -90,6 +90,7 @@ void print_exp(Node* node) {
             break;
         case CLOSE_PARENTHESIS:
             printf(")");
+            break;
         case NONETYPE:
             printf("NONETYPE");
             break;

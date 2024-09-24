@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "lexer.h"
-#include <stdio.h>
 
 typedef enum NodeType {
     NONETYPE,
@@ -29,14 +28,12 @@ Node* parse_expression(TokenList* tokens);
 Node* parse_expression(TokenList* tokens) {
     Node* expression = create_node();
     Node* focus_node = expression;
-
+    // TODO: will need a stack of these
+    Node* left_paren_return = NULL;
     for (int i = 0; i < tokens->length; i++) { 
         Node current_node;
         current_node.lhs = NULL;
         current_node.rhs = NULL;
-
-        // TODO: will need a stack of these
-        Node* left_paren_return = NULL;
 
         switch (tokens->tokens[i]->type) {
             case CONSTANT:
@@ -57,14 +54,15 @@ Node* parse_expression(TokenList* tokens) {
                 current_node.type = ADDITION;
                 current_node.precedence = 4;
                 if ((current_node.precedence > focus_node->precedence) ||
-                        (focus_node->type == INTEGER) || 
-                        (left_paren_return != NULL)) {
+                        (focus_node->type == INTEGER)) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
-                    if (left_paren_return != NULL) {
-                        left_paren_return = NULL;
-                    }
+                } else if (left_paren_return != NULL) {
+                    current_node.lhs = create_node();
+                    *(current_node.lhs) = *left_paren_return;
+                    *focus_node = current_node;
+                    left_paren_return = NULL;
                 } else {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *(focus_node->rhs);
@@ -78,14 +76,15 @@ Node* parse_expression(TokenList* tokens) {
                 current_node.type = MULTIPLICATION;
                 current_node.precedence = 3;
                 if ((current_node.precedence > focus_node->precedence) ||
-                        (focus_node->type == INTEGER) || 
-                        (left_paren_return != NULL)) {
+                        (focus_node->type == INTEGER)) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
-                    if (left_paren_return != NULL) {
-                        left_paren_return = NULL;
-                    }
+                } else if (left_paren_return != NULL) {
+                    current_node.lhs = create_node();
+                    *(current_node.lhs) = *left_paren_return;
+                    *focus_node = current_node;
+                    left_paren_return = NULL;
                 } else {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *(focus_node->rhs);
@@ -96,11 +95,12 @@ Node* parse_expression(TokenList* tokens) {
             case LEFT_PARENTHESIS:
                 if (expression->type == NONETYPE) {
                     expression->type = OPEN_PARENTHESIS;
-                    expression->precedence = 16;
+                    expression->precedence = 0;
+                    left_paren_return = focus_node;
                     continue;
                 }
                 current_node.type = OPEN_PARENTHESIS;
-                current_node.precedence = 16;
+                current_node.precedence = 0;
                 focus_node->rhs = create_node();
                 *(focus_node->rhs) = current_node;
                 focus_node = focus_node->rhs;
@@ -108,7 +108,7 @@ Node* parse_expression(TokenList* tokens) {
                 break;
             case RIGHT_PARENTHESIS:
                 current_node.type = CLOSE_PARENTHESIS;
-                current_node.precedence = 16;
+                current_node.precedence = 0;
                 focus_node->rhs->rhs = create_node();
                 *(focus_node->rhs->rhs) = current_node;
                 focus_node = left_paren_return;
