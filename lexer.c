@@ -82,6 +82,11 @@ void lex(TokenList* tokens, String* file_text) {
                     word_index = 0;
                     words_index++;
                 }
+                set_char(&word, file_text->string[file_index], 0);
+                set_string_in_list(&words, words_index, word.string, word.length);
+                memset(word.string, 0, word.length);
+                words_index++;
+                break;
             default:
                 set_char(&word, file_text->string[file_index], word_index);
                 word_index++;

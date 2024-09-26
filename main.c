@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include "dynamic_string.h"
 #include "parser.h"
+#include "code_generation.h"
 
 void enum_to_str(char* buf, TokenType type);
 void print_exp(Node* node);
@@ -58,14 +59,28 @@ int main(int argc, char** argv) {
     /*set_tklist_string(&tokens, 2, "3");*/
     /*set_tklist_type(&tokens, 3, STAR);*/
     /*set_tklist_type(&tokens, 4, CONSTANT);*/
-    /*set_tklist_string(&tokens, 4, "4");*/
+    /*set_tklist_string(&tokens, 4, "4" ;*/
     Node* expression = parse_expression(&tokens);
-    destroy_token_list(&tokens);
-    print_exp(expression);
-    int result = eval_exp(expression);
+    /*destroy_token_list(&tokens);*/
+    /*print_exp(expression);*/
+    /*int result = eval_exp(expression);*/
+    /*printf("= %d", result);*/
+    /*printf("\n");*/
+    String asm_text;
+    initialize_string(&asm_text, 10);
+    generate_assembly(&asm_text ,expression);
+    printf("%s", asm_text.string);
+    FILE* asm_file;
+    asm_file = fopen("asm.s", "w");
+    if (asm_file == NULL) {
+        printf("error opening file\n");
+        exit(1);
+    }
+    fprintf(asm_file, "%s", asm_text.string);
+    fclose(asm_file);
+    free(asm_text.string);
     destroy_node(expression);
-    printf("= %d", result);
-    printf("\n");
+
 
     return 0;
 }

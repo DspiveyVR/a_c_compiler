@@ -26,9 +26,31 @@ Node* parse_expression(TokenList* tokens);
 
 
 Node* parse_expression(TokenList* tokens) {
+    /*
+        "expression" is the full binary tree, it is usually not directly
+        modified, except when the current node is the first node in an
+        expression.
+        focus_node helps keep track of order of operations by pointing to
+        the previous operator in the expression which is compared to the next 
+        operator to determine which one takes precedence.
+
+        If current_node and focus_node are both binary expressions and 
+        current_node has a higher precedence than focus_node ("higher" is
+        actually lower), then current_node will copy focus_node->rhs into
+        current_node.lhs and then current_node will become focus_node->rhs,
+        then focus_node is moved down to focus_node->rhs.
+        Otherwise, if current_node has a lower precedence than focus_node,
+        then focus_node is copied into current_node.lhs and focus_node is
+        reassigned to current_node.
+    */
     Node* expression = create_node();
     Node* focus_node = expression;
     // TODO: will need a stack of these
+    // When the parser encounters a closing parenthesis, this return address
+    // is assigned so that subsequent operators can be compared against the
+    // entire parenthetical expression with the assumption that this 
+    // parenthetical expression has been fully parsed if left_paren_return
+    // is not NULL.  Then left_paren_return is reassigned to NULL.
     Node* left_paren_return = NULL;
     for (int i = 0; i < tokens->length; i++) { 
         Node current_node;

@@ -19,6 +19,14 @@ void set_string(String* string, char* input_string, int bytes) {
     strncpy(string->string, input_string, string->length);
 }
 
+void set_string_at(String* string, char* input_string, int index, int bytes) {
+    if ((index + bytes) >= string->length) {
+        string->string = realloc((void*)(string->string), (index + bytes));
+        string->length = (index + bytes);
+    }
+    strncpy(string->string + index, input_string, bytes);
+}
+
 void set_char(String* string, char input_char, int index) {
     if (index >= string->length) {
         string->string = realloc((void*)(string->string), string->length + 5);
