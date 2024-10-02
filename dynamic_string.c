@@ -7,13 +7,14 @@ typedef struct String {
 } String;
 
 void initialize_string(String* string, int length) {
-    string->string = malloc(length);
+    string->string = calloc(length, 1);
     string->length = length;
 }
 
 void set_string(String* string, char* input_string, int bytes) {
     if (bytes >= string->length) {
         string->string = realloc((void*)(string->string), bytes);
+        memset(string->string + string->length, 0, bytes - string->length);
         string->length = bytes;
     }
     strncpy(string->string, input_string, string->length);

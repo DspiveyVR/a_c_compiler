@@ -6,6 +6,7 @@ typedef enum TokenType {
     NONE,
     KEYWORD,
     IDENTIFIER,
+    EQUALS,
     CONSTANT,
     STRING_LITERAL,
     LEFT_PARENTHESIS,

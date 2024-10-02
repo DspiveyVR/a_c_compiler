@@ -1,31 +1,89 @@
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include "lexer.h"
 
 typedef enum NodeType {
     NONETYPE,
-    OPEN_PARENTHESIS,
-    CLOSE_PARENTHESIS,
-    INTEGER,
-    ADDITION,
-    MULTIPLICATION,
+    VARIABLE_DECLARATION_S,
+    VARIABLE_E,
+    ASSIGNMENT_E,
+    OPEN_PARENTHESIS_E,
+    CLOSE_PARENTHESIS_E,
+    INTEGER_E,
+    ADDITION_E,
+    MULTIPLICATION_E,
+    RETURN_S,
 } NodeType;
+
+typedef enum DataType {
+    INT,
+} DataType;
+
+struct Node;
+typedef struct NodeList {
+    struct Node** nodes;
+    int capacity;
+} NodeList;
 
 typedef struct Node {
     NodeType type;
-    // Could end up being a string since i'll handle identifiers later
-    uint64_t value;
+    DataType datatype;
+    union {
+        uint64_t value;
+        char* name;
+    };
     uint8_t precedence;
-    struct Node* lhs;
-    struct Node* rhs;
+    union {
+        struct {
+            struct Node* lhs;
+            struct Node* rhs;
+        };
+        NodeList* nodes;
+    };
 } Node;
 
 Node* create_node();
 void destroy_node(Node* node);
-Node* parse_expression(TokenList* tokens);
+Node* parse_expression(TokenList* tokens, int* i);
 
+Node* parse_statement(TokenList* tokens, int* i) {
+    Node* statement = NULL;
+    for (;*i < tokens->length; (*i)++) { 
+        switch (tokens->tokens[*i]->type) {
+            case KEYWORD:
+                if (strncmp(tokens->tokens[*i]->value, "int", 3) == 0) {
+                    statement = create_node();
+                    // FIXME: this one will have to change a lot later.
+                    statement->type = VARIABLE_DECLARATION_S;
+                    statement->datatype = INT;
+                    statement->name = (char*)malloc(50);
+                    strncpy(statement->name, tokens->tokens[(*i) + 1]->value, 50);
+                    *i += 1;
+                } else if (strncmp(tokens->tokens[*i]->value, "return", 6) == 0) {
+                    statement = create_node();
+                    statement->type = RETURN_S;
+                    (*i)++;
+                    statement->rhs = parse_expression(tokens, i);
+                }
+                break;
+            case NONE:
+            case SEMICOLON:
+                (*i)++;
+                return statement;
+            // This encompasses any statement which is just an expression,
+            // including assignment.
+            default:
+                statement = parse_expression(tokens, i);
+                // The next iteration of the for loop should catch the semicolon.
+                (*i)--;
+                break;
+        }
+    }
+    return statement;
+}
 
-Node* parse_expression(TokenList* tokens) {
+Node* parse_expression(TokenList* tokens, int* i) {
     /*
         "expression" is the full binary tree, it is usually not directly
         modified, except when the current node is the first node in an
@@ -49,34 +107,51 @@ Node* parse_expression(TokenList* tokens) {
     // When the parser encounters a closing parenthesis, this return address
     // is assigned so that subsequent operators can be compared against the
     // entire parenthetical expression with the assumption that this 
-    // parenthetical expression has been fully parsed if left_paren_return
-    // is not NULL.  Then left_paren_return is reassigned to NULL.
+    // parenthetical expression has been fully parsed.
+    // If left_paren_return is not NULL  
+    // then left_paren_return is reassigned to NULL.
     Node* left_paren_return = NULL;
-    for (int i = 0; i < tokens->length; i++) { 
+    for (;*i < tokens->length; (*i)++) { 
         Node current_node;
         current_node.lhs = NULL;
         current_node.rhs = NULL;
 
-        switch (tokens->tokens[i]->type) {
+        switch (tokens->tokens[*i]->type) {
             case CONSTANT:
                 if (expression->type == NONETYPE) {
-                    expression->type = INTEGER;
-                    expression->value = atoi(tokens->tokens[i]->value);
+                    expression->type = INTEGER_E;
+                    expression->value = atoi(tokens->tokens[*i]->value);
                     expression->precedence = 16;
                     continue;
                 }
-                current_node.type = INTEGER;
-                current_node.value = atoi(tokens->tokens[i]->value);
+                current_node.type = INTEGER_E;
+                current_node.value = atoi(tokens->tokens[*i]->value);
                 current_node.precedence = 16;
                 // Integers always have the lowest precedence.
                 focus_node->rhs = create_node();
                 *(focus_node->rhs) = current_node;
                 break;
+            case IDENTIFIER:
+                if (expression->type == NONETYPE) {
+                    expression->type = VARIABLE_E;
+                    expression->name = (char*)malloc(50);
+                    strncpy(expression->name, tokens->tokens[*i]->value, 50);
+                    expression->precedence = 16;
+                    continue;
+                }
+                current_node.type = VARIABLE_E;
+                current_node.name = (char*)malloc(50);
+                strncpy(current_node.name, tokens->tokens[*i]->value, 50);
+                current_node.precedence = 16;
+                focus_node->rhs = create_node();
+                *(focus_node->rhs) = current_node;
+                break;
             case PLUS:
-                current_node.type = ADDITION;
+                current_node.type = ADDITION_E;
                 current_node.precedence = 4;
                 if ((current_node.precedence > focus_node->precedence) ||
-                        (focus_node->type == INTEGER)) {
+                        (focus_node->type == INTEGER_E) ||
+                        (focus_node->type == VARIABLE_E)) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
@@ -95,10 +170,32 @@ Node* parse_expression(TokenList* tokens) {
             // TODO: will have to determine the context to differentiate 
             // between multiplication and dereference.
             case STAR:
-                current_node.type = MULTIPLICATION;
+                current_node.type = MULTIPLICATION_E;
                 current_node.precedence = 3;
                 if ((current_node.precedence > focus_node->precedence) ||
-                        (focus_node->type == INTEGER)) {
+                        (focus_node->type == INTEGER_E) ||
+                        (focus_node->type == VARIABLE_E)) {
+                    current_node.lhs = create_node();
+                    *(current_node.lhs) = *focus_node;
+                    *focus_node = current_node;
+                } else if (left_paren_return != NULL) {
+                    current_node.lhs = create_node();
+                    *(current_node.lhs) = *left_paren_return;
+                    *focus_node = current_node;
+                    left_paren_return = NULL;
+                } else {
+                    current_node.lhs = create_node();
+                    *(current_node.lhs) = *(focus_node->rhs);
+                    *(focus_node->rhs) = current_node;
+                    focus_node = focus_node->rhs;
+                }
+                break;
+            case EQUALS:
+                current_node.type = ASSIGNMENT_E;
+                current_node.precedence = 14;
+                if ((current_node.precedence > focus_node->precedence) ||
+                        (focus_node->type == INTEGER_E) ||
+                        (focus_node->type == VARIABLE_E)) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
@@ -116,12 +213,12 @@ Node* parse_expression(TokenList* tokens) {
                 break;
             case LEFT_PARENTHESIS:
                 if (expression->type == NONETYPE) {
-                    expression->type = OPEN_PARENTHESIS;
+                    expression->type = OPEN_PARENTHESIS_E;
                     expression->precedence = 0;
                     left_paren_return = focus_node;
                     continue;
                 }
-                current_node.type = OPEN_PARENTHESIS;
+                current_node.type = OPEN_PARENTHESIS_E;
                 current_node.precedence = 0;
                 focus_node->rhs = create_node();
                 *(focus_node->rhs) = current_node;
@@ -129,13 +226,14 @@ Node* parse_expression(TokenList* tokens) {
                 left_paren_return = focus_node;
                 break;
             case RIGHT_PARENTHESIS:
-                current_node.type = CLOSE_PARENTHESIS;
+                current_node.type = CLOSE_PARENTHESIS_E;
                 current_node.precedence = 0;
                 focus_node->rhs->rhs = create_node();
                 *(focus_node->rhs->rhs) = current_node;
                 focus_node = left_paren_return;
                 break;
             case NONE:
+            case SEMICOLON:
                 return expression;
         }
     }
@@ -147,6 +245,8 @@ Node* create_node() {
     node->type = NONETYPE;
     node->lhs = NULL;
     node->rhs = NULL;
+    node->nodes = NULL;
+    node->name = NULL;
     return node;
 }
 
@@ -157,5 +257,30 @@ void destroy_node(Node* node) {
     if (node->rhs != NULL) {
         destroy_node(node->rhs);
     }
+    if ((node->type == VARIABLE_E) ||
+            (node->type == VARIABLE_DECLARATION_S)) {
+        free(node->name);
+    }
     free(node);
+}
+
+void initialize_node_list(NodeList* array, int capacity) {
+    array->nodes = malloc(sizeof(Node*) * capacity);
+    array->capacity = capacity;
+
+    for (int i = 0; i < capacity; i++) {
+        array->nodes[i] = NULL;
+    }
+}
+
+void destroy_node_list(NodeList* array) {
+    free(array->nodes);
+}
+
+void increase_node_list_capacity(NodeList* array, int new_capacity) {
+    array->nodes = realloc((void*)(array->nodes), new_capacity * sizeof(Node*));
+    for (int i = array->capacity; i < new_capacity; i++) {
+        array->nodes[i] = NULL;
+    }
+    array->capacity = new_capacity;
 }

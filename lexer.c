@@ -8,6 +8,7 @@ typedef enum TokenType {
     NONE,
     KEYWORD,
     IDENTIFIER,
+    EQUALS,
     CONSTANT,
     STRING_LITERAL,
     LEFT_PARENTHESIS,
@@ -76,6 +77,7 @@ void lex(TokenList* tokens, String* file_text) {
             case ';':
             case '+':
             case '*':
+            case '=':
                 if (strncmp(word.string, "", word.length) != 0) {
                     set_string_in_list(&words, words_index, word.string, word.length);
                     memset(word.string, 0, word.length);
@@ -114,9 +116,8 @@ void lex(TokenList* tokens, String* file_text) {
         } else if (strncmp(words.list[i]->string, "return", 6) == 0) {
             set_tklist_type(tokens, i, KEYWORD);
             set_tklist_string(tokens, i, "return");
-        } else if (strncmp(words.list[i]->string, "main", 5) == 0) {
-            set_tklist_type(tokens, i, IDENTIFIER);
-            set_tklist_string(tokens, i, "main");
+        } else if (strncmp(words.list[i]->string, "=", 1) == 0) {
+            set_tklist_type(tokens, i, EQUALS);
         } else if (strncmp(words.list[i]->string, "(", 1) == 0) {
             set_tklist_type(tokens, i, LEFT_PARENTHESIS);
         } else if (strncmp(words.list[i]->string, ")", 1) == 0) {
@@ -131,6 +132,10 @@ void lex(TokenList* tokens, String* file_text) {
             set_tklist_type(tokens, i, PLUS);
         } else if (strncmp(words.list[i]->string, "*", 1) == 0) {
             set_tklist_type(tokens, i, STAR);
+        } else if (isalpha(words.list[i]->string[0]) || 
+                   words.list[i]->string[0] == '_') {
+            set_tklist_type(tokens, i, IDENTIFIER);
+            set_tklist_string(tokens, i, words.list[i]->string);                           
         } else {
             set_tklist_type(tokens, i, INVALID);
             set_tklist_string(tokens, i, words.list[i]->string);
@@ -151,7 +156,7 @@ void initialize_token_list(TokenList* array, int length) {
 
     for (int i = 0; i < length; i++) {
         array->tokens[i] = (Token*)malloc(sizeof(Token));
-        array->tokens[i]->value = (char*)malloc(50);
+        array->tokens[i]->value = (char*)calloc(50, 1);
     }
 }
 
@@ -169,7 +174,7 @@ void set_tklist_string(TokenList* array, int index, char* string) {
         array->length += 5;
         for (int i = array->length - 5; i < array->length; i++) {
             array->tokens[i] = (Token*)malloc(sizeof(Token));
-            array->tokens[i]->value = (char*)malloc(50);           
+            array->tokens[i]->value = (char*)calloc(50, 1);
         }
     }
     strncpy(array->tokens[index]->value, string, 50);
@@ -181,7 +186,7 @@ void set_tklist_type(TokenList* array, int index, TokenType type) {
         array->length += 5;
         for (int i = array->length - 5; i < array->length; i++) {
             array->tokens[i] = (Token*)malloc(sizeof(Token));
-            array->tokens[i]->value = (char*)malloc(50);           
+            array->tokens[i]->value = (char*)calloc(50, 1); 
         }
     }
     array->tokens[index]->type = type;
@@ -192,7 +197,7 @@ void initialize_string_list(StringList* array, int length) {
     array->length = length;   
 
     for (int i = 0; i < length; i++) {
-        array->list[i] = (String*)malloc(sizeof(String*));
+        array->list[i] = (String*)malloc(sizeof(String));
         initialize_string(array->list[i], 10);
     }
 }
