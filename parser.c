@@ -13,10 +13,16 @@ typedef enum NodeType {
     INTEGER_E,
     ADDITION_E,
     MULTIPLICATION_E,
+    LOGICAL_EQUALS_E,
     RETURN_S,
+    FUNCTION_DECLARATION_H,
+    FUNCTION_DEFINITION_H,
+    IF_H,
+    BLOCK,
 } NodeType;
 
 typedef enum DataType {
+    VOID,
     INT,
 } DataType;
 
@@ -46,6 +52,78 @@ typedef struct Node {
 Node* create_node();
 void destroy_node(Node* node);
 Node* parse_expression(TokenList* tokens, int* i);
+Node* parse_statement(TokenList* tokens, int* i);
+NodeList* initialize_node_list(int capacity);
+void increase_node_list_capacity(NodeList* array, int new_capacity);
+
+Node* parse_block(TokenList* tokens, int* i) {
+    Node* block = create_node();
+    Node* header = NULL;
+    block->type = BLOCK;
+    /*NodeList left_bracket_return_stack;*/
+
+    for (;*i < tokens->length; (*i)++) { 
+        switch (tokens->tokens[*i]->type) {
+            case LEFT_BRACKET:
+                {
+                block->nodes = initialize_node_list(5);
+                int node_index = 0;
+                if (header != NULL)  {
+                    block->nodes->nodes[0] = header;
+                    node_index++;
+                }
+                while (tokens->tokens[*i]->type != RIGHT_BRACKET) {
+                    if (*i >= block->nodes->capacity) {
+                        increase_node_list_capacity(block->nodes, 
+                                                    block->nodes->capacity + 5);
+                    }
+
+                    (*i)++;
+                    switch (tokens->tokens[*i]->type) {
+                        case KEYWORD:
+                            if (strncmp(tokens->tokens[*i]->value, "if", 2) == 0) {
+                            } else {
+                                block->nodes->nodes[node_index] = parse_statement(tokens, i);
+                                break;
+                            }
+                        case LEFT_BRACKET:
+                            block->nodes->nodes[node_index] = parse_block(tokens, i);
+                            break;
+                        default:
+                            block->nodes->nodes[node_index] = parse_statement(tokens, i);
+                            break;
+                    }
+                }
+                }
+                (*i)--;
+                break;
+            case KEYWORD:
+                {
+                if (strncmp(tokens->tokens[*i]->value, "if", 2) == 0) {
+                    header = create_node();
+                    header->type = IF_H;
+                    (*i)++;
+                    header->rhs = parse_expression(tokens, i);
+                }
+                }
+                break;
+            case IDENTIFIER:
+                {
+                // FIXME: lazy
+                header = create_node();
+                header->type = FUNCTION_DEFINITION_H;
+                *i += 2;
+                }
+                break;
+            case RIGHT_BRACKET:
+                return block;
+            default:
+                break;
+        }
+    }
+
+    return block;
+}
 
 Node* parse_statement(TokenList* tokens, int* i) {
     Node* statement = NULL;
@@ -68,15 +146,13 @@ Node* parse_statement(TokenList* tokens, int* i) {
                 }
                 break;
             case NONE:
-            case SEMICOLON:
-                (*i)++;
+                break;
+            case RIGHT_BRACKET:
                 return statement;
             // This encompasses any statement which is just an expression,
             // including assignment.
             default:
                 statement = parse_expression(tokens, i);
-                // The next iteration of the for loop should catch the semicolon.
-                (*i)--;
                 break;
         }
     }
@@ -211,6 +287,27 @@ Node* parse_expression(TokenList* tokens, int* i) {
                     focus_node = focus_node->rhs;
                 }
                 break;
+            case EQUALS_EQUALS:
+                current_node.type = LOGICAL_EQUALS_E;
+                current_node.precedence = 7;
+                if ((current_node.precedence > focus_node->precedence) ||
+                        (focus_node->type == INTEGER_E) ||
+                        (focus_node->type == VARIABLE_E)) {
+                    current_node.lhs = create_node();
+                    *(current_node.lhs) = *focus_node;
+                    *focus_node = current_node;
+                } else if (left_paren_return != NULL) {
+                    current_node.lhs = create_node();
+                    *(current_node.lhs) = *left_paren_return;
+                    *focus_node = current_node;
+                    left_paren_return = NULL;
+                } else {
+                    current_node.lhs = create_node();
+                    *(current_node.lhs) = *(focus_node->rhs);
+                    *(focus_node->rhs) = current_node;
+                    focus_node = focus_node->rhs;
+                }
+                break;
             case LEFT_PARENTHESIS:
                 if (expression->type == NONETYPE) {
                     expression->type = OPEN_PARENTHESIS_E;
@@ -232,8 +329,13 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 *(focus_node->rhs->rhs) = current_node;
                 focus_node = left_paren_return;
                 break;
-            case NONE:
             case SEMICOLON:
+                break;
+            case LEFT_BRACKET:
+            case RIGHT_BRACKET:
+                (*i)--;
+            case NONE:
+            default:
                 return expression;
         }
     }
@@ -264,13 +366,16 @@ void destroy_node(Node* node) {
     free(node);
 }
 
-void initialize_node_list(NodeList* array, int capacity) {
+NodeList* initialize_node_list(int capacity) {
+    NodeList* array = malloc(sizeof(NodeList*));
     array->nodes = malloc(sizeof(Node*) * capacity);
     array->capacity = capacity;
 
     for (int i = 0; i < capacity; i++) {
         array->nodes[i] = NULL;
     }
+    
+    return array;
 }
 
 void destroy_node_list(NodeList* array) {

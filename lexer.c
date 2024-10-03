@@ -9,6 +9,7 @@ typedef enum TokenType {
     KEYWORD,
     IDENTIFIER,
     EQUALS,
+    EQUALS_EQUALS,
     CONSTANT,
     STRING_LITERAL,
     LEFT_PARENTHESIS,
@@ -70,6 +71,16 @@ void lex(TokenList* tokens, String* file_text) {
                     words_index++;
                 }
                 break;
+            case '=':
+                if (file_text->string[file_index + 1] == '=') {
+                    set_char(&word, '=', 0);
+                    set_char(&word, '=', 1);
+                    set_string_in_list(&words, words_index, word.string, word.length);
+                    memset(word.string, 0, word.length);
+                    words_index++;
+                    file_index++;
+                    break;
+                }
             case '(':
             case ')':
             case '{':
@@ -77,7 +88,6 @@ void lex(TokenList* tokens, String* file_text) {
             case ';':
             case '+':
             case '*':
-            case '=':
                 if (strncmp(word.string, "", word.length) != 0) {
                     set_string_in_list(&words, words_index, word.string, word.length);
                     memset(word.string, 0, word.length);
@@ -116,6 +126,11 @@ void lex(TokenList* tokens, String* file_text) {
         } else if (strncmp(words.list[i]->string, "return", 6) == 0) {
             set_tklist_type(tokens, i, KEYWORD);
             set_tklist_string(tokens, i, "return");
+        } else if (strncmp(words.list[i]->string, "if", 6) == 0) {
+            set_tklist_type(tokens, i, KEYWORD);
+            set_tklist_string(tokens, i, "if");
+        } else if (strncmp(words.list[i]->string, "==", 2) == 0) {
+            set_tklist_type(tokens, i, EQUALS_EQUALS);
         } else if (strncmp(words.list[i]->string, "=", 1) == 0) {
             set_tklist_type(tokens, i, EQUALS);
         } else if (strncmp(words.list[i]->string, "(", 1) == 0) {

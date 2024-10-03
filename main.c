@@ -11,7 +11,7 @@
 void enum_to_str(char* buf, TokenType type);
 /*void print_exp(Node* node);*/
 /*int eval_exp(Node* node);*/
-void print_ast(Node* node);
+void print_ast(Node* node, int indentation);
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -53,30 +53,19 @@ int main(int argc, char** argv) {
 
         printf("  %s %s\n", type, tokens.tokens[i]->value);
     }
-    /*Node* expression = parse_expression(&tokens);*/
-    NodeList statements;
-    initialize_node_list(&statements, 3);
+
     int token_index = 0;
-    for (int i = 0; token_index < tokens.length; i++) {
-        if (i >= statements.capacity) {
-            increase_node_list_capacity(&statements, statements.capacity + 5);
-        }
-        statements.nodes[i] = parse_statement(&tokens, &token_index);
-    }
-    destroy_token_list(&tokens);
+    Node* block = parse_block(&tokens, &token_index);
     bg_magenta();
     bold();
     printf("AST");
     clear();
-    for (int i = 0; statements.nodes[i] != NULL && i < statements.capacity; i++) {
-        printf("\n  ");
-        print_ast(statements.nodes[i]);
-    }
     printf("\n");
-    for (int i = 0; statements.nodes[i] != NULL && i < statements.capacity; i++) {
-        destroy_node(statements.nodes[i]);
-    }
-    destroy_node_list(&statements);
+    print_ast(block, 0);
+    destroy_token_list(&tokens);
+
+
+
     /*String asm_text;*/
     /*initialize_string(&asm_text, 10);*/
     /*generate_assembly(&asm_text ,expression);*/
@@ -96,11 +85,46 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-void print_ast(Node* node) {
+void print_ast(Node* node, int indentation) {
     if (node == NULL) {
         return;
     }
+    char indentation_str[16] = "";
+    memset(indentation_str, ' ', indentation);
+
     switch (node->type) {
+        case BLOCK:
+            printf("%s", indentation_str);
+            printf("BLOCK {\n");
+            for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
+                switch (node->nodes->nodes[i]->type) {
+                    case BLOCK:
+                        print_ast(node->nodes->nodes[i], indentation + 2);
+                        break;
+                    default:
+                        {
+                        char indentation_str[16] = "";
+                        memset(indentation_str, ' ', indentation + 2);
+                        printf("%s", indentation_str);
+                        print_ast(node->nodes->nodes[i], indentation + 2);
+                        }
+                        break;
+                }
+                printf("\n");
+            }
+            printf("%s", indentation_str);
+            printf("}\n");
+            break;
+        case IF_H:
+            printf("IF (");
+            print_ast(node->rhs, indentation);
+            printf(")");
+            break;
+        case FUNCTION_DEFINITION_H:
+            printf("FUNCTION_DEFINITION_H (");
+            print_ast(node->rhs, indentation);
+            printf(")");
+            break;
         case INTEGER_E:
             clear();
             printf("%u", (uint32_t)node->value);
@@ -118,12 +142,12 @@ void print_ast(Node* node) {
             clear_bold();
             dim();
             printf("(");
-            print_ast(node->lhs);
+            print_ast(node->lhs, indentation);
             clear();
             fg_cyan();
             dim();
             printf(",");
-            print_ast(node->rhs);
+            print_ast(node->rhs, indentation);
             clear();
             fg_cyan();
             dim();
@@ -137,19 +161,19 @@ void print_ast(Node* node) {
             clear_bold();
             dim();
             printf("(");
-            print_ast(node->lhs);
+            print_ast(node->lhs, indentation);
             clear();
             fg_bright_red();
             dim();
             printf(",");
-            print_ast(node->rhs);
+            print_ast(node->rhs, indentation);
             clear();
             fg_bright_red();
             dim();
             printf(")");
             break;
         case OPEN_PARENTHESIS_E:
-            print_ast(node->rhs);
+            print_ast(node->rhs, indentation);
             break;
         case CLOSE_PARENTHESIS_E:
             break;
@@ -161,17 +185,17 @@ void print_ast(Node* node) {
         case ASSIGNMENT_E:
             clear();
             printf("ASSIGNMENT(");
-            print_ast(node->lhs);
+            print_ast(node->lhs, indentation);
             clear();
             printf(",");
-            print_ast(node->rhs);
+            print_ast(node->rhs, indentation);
             clear();
             printf(")");
             break;
         case RETURN_S:
             clear();
             printf("RETURN(");
-            print_ast(node->rhs);
+            print_ast(node->rhs, indentation);
             clear();
             printf(")");
             break;
@@ -249,6 +273,9 @@ void enum_to_str(char* buf, TokenType type) {
             break;
         case EQUALS: 
             strncpy(buf, "EQUALS", 7);
+            break;
+        case EQUALS_EQUALS: 
+            strncpy(buf, "EQUALS_EQUALS", 14);
             break;
         case CONSTANT:
             strncpy(buf, "CONSTANT", 9);

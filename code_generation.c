@@ -59,8 +59,8 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i) {
             unravel_expression(asm_string, input_node->rhs, str_i);
             break;
         case CLOSE_PARENTHESIS_E:
-            break;
         case NONETYPE:
+        default:
             break;
     }
 

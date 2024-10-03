@@ -1,7 +1,7 @@
-int a;
-a = a + 4 * 4;
-4 * 3;
-4 * 3;
-a = 4 * 3;
-a = 4 * 9 + 2;
-return a + a * 2;
+int main() {
+    if (1) {
+        return 2 * 2;
+    }
+}
+
+
