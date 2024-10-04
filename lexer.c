@@ -170,8 +170,8 @@ void initialize_token_list(TokenList* array, int length) {
     array->length = length;
 
     for (int i = 0; i < length; i++) {
-        array->tokens[i] = (Token*)malloc(sizeof(Token));
-        array->tokens[i]->value = (char*)calloc(50, 1);
+        array->tokens[i] = malloc(sizeof(Token));
+        array->tokens[i]->value = calloc(50, 1);
     }
 }
 
@@ -188,8 +188,8 @@ void set_tklist_string(TokenList* array, int index, char* string) {
         array->tokens = realloc((void*)(array->tokens), (array->length + 5) * sizeof(Token*));
         array->length += 5;
         for (int i = array->length - 5; i < array->length; i++) {
-            array->tokens[i] = (Token*)malloc(sizeof(Token));
-            array->tokens[i]->value = (char*)calloc(50, 1);
+            array->tokens[i] = malloc(sizeof(Token));
+            array->tokens[i]->value = calloc(50, 1);
         }
     }
     strncpy(array->tokens[index]->value, string, 50);
@@ -200,8 +200,8 @@ void set_tklist_type(TokenList* array, int index, TokenType type) {
         array->tokens = realloc((void*)(array->tokens), (array->length + 5) * sizeof(Token*));
         array->length += 5;
         for (int i = array->length - 5; i < array->length; i++) {
-            array->tokens[i] = (Token*)malloc(sizeof(Token));
-            array->tokens[i]->value = (char*)calloc(50, 1); 
+            array->tokens[i] = malloc(sizeof(Token));
+            array->tokens[i]->value = calloc(50, 1); 
         }
     }
     array->tokens[index]->type = type;
@@ -212,7 +212,7 @@ void initialize_string_list(StringList* array, int length) {
     array->length = length;   
 
     for (int i = 0; i < length; i++) {
-        array->list[i] = (String*)malloc(sizeof(String));
+        array->list[i] = malloc(sizeof(String));
         initialize_string(array->list[i], 10);
     }
 }
@@ -231,7 +231,7 @@ void set_string_in_list(StringList* array, int index, char* string, int bytes) {
         array->length += 5;
 
         for (int i = array->length - 5; i < array->length; i++) {
-            array->list[i] = (String*)malloc(sizeof(String*));
+            array->list[i] = malloc(sizeof(String*));
             initialize_string(array->list[i], 10);
         }
     }

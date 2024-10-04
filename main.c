@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     bold();
     printf("TOKENS");
     clear();
-    printf("\n");
+    printf("\n\n");
     for (int i = 0; i < tokens.length; i++) {
         // strncpy(tokens[i].value, "int", 3);
         char type[20] = "";
@@ -56,6 +56,7 @@ int main(int argc, char** argv) {
 
     int token_index = 0;
     Node* block = parse_block(&tokens, &token_index);
+    printf("\n");
     bg_magenta();
     bold();
     printf("AST");
@@ -63,6 +64,7 @@ int main(int argc, char** argv) {
     printf("\n");
     print_ast(block, 0);
     destroy_token_list(&tokens);
+    destroy_node(block);
 
 
 
@@ -94,6 +96,7 @@ void print_ast(Node* node, int indentation) {
 
     switch (node->type) {
         case BLOCK:
+            printf("\n");
             printf("%s", indentation_str);
             printf("BLOCK {\n");
             for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
@@ -116,13 +119,17 @@ void print_ast(Node* node, int indentation) {
             printf("}\n");
             break;
         case IF_H:
-            printf("IF (");
+            clear();
+            printf("IF(");
             print_ast(node->rhs, indentation);
+            clear();
             printf(")");
             break;
         case FUNCTION_DEFINITION_H:
-            printf("FUNCTION_DEFINITION_H (");
+            clear();
+            printf("FUNCTION_DEFINITION_H(");
             print_ast(node->rhs, indentation);
+            clear();
             printf(")");
             break;
         case INTEGER_E:
@@ -172,6 +179,25 @@ void print_ast(Node* node, int indentation) {
             dim();
             printf(")");
             break;
+        case LOGICAL_EQUALS_E:
+            clear();
+            fg_bright_red();
+            bold();
+            printf("L_EQ");
+            clear_bold();
+            dim();
+            printf("(");
+            print_ast(node->lhs, indentation);
+            clear();
+            fg_bright_red();
+            dim();
+            printf(",");
+            print_ast(node->rhs, indentation);
+            clear();
+            fg_bright_red();
+            dim();
+            printf(")");
+            break;
         case OPEN_PARENTHESIS_E:
             print_ast(node->rhs, indentation);
             break;
@@ -180,7 +206,7 @@ void print_ast(Node* node, int indentation) {
         case VARIABLE_DECLARATION_S:
             clear();           
             // INT is only type so it's hardcoded for now.
-            printf("VAR_DECLARATION(%s, %s)", "INT", node->name);
+            printf("VAR_DECLARATION(%s,%s)", "INT", node->name);
             break;
         case ASSIGNMENT_E:
             clear();
