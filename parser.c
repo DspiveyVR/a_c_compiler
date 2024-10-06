@@ -197,7 +197,9 @@ Node* parse_expression(TokenList* tokens, int* i) {
      If left_paren_return is not NULL  
      then left_paren_return is reassigned to NULL.
     */
-    Node* left_paren_return = NULL;
+    int return_stack_top = 0;
+    // Let's be real you don't need more than this.
+    Node* left_paren_return_stack[10] = {NULL};
     while (*i < tokens->length) { 
         Node current_node;
         current_node.lhs = NULL;
@@ -246,17 +248,19 @@ Node* parse_expression(TokenList* tokens, int* i) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
-                } else if (left_paren_return != NULL) {
+                } else if (left_paren_return_stack[return_stack_top] != NULL) {
                     current_node.lhs = create_node();
-                    *(current_node.lhs) = *left_paren_return;
+                    *(current_node.lhs) = 
+                                    *(left_paren_return_stack[return_stack_top]);
+                    left_paren_return_stack[return_stack_top] = NULL;
                     *focus_node = current_node;
-                    left_paren_return = NULL;
                 } else {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *(focus_node->rhs);
                     *(focus_node->rhs) = current_node;
                     focus_node = focus_node->rhs;
                 }
+
                 (*i)++;
                 break;
             // TODO: will have to determine the context to differentiate 
@@ -270,11 +274,12 @@ Node* parse_expression(TokenList* tokens, int* i) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
-                } else if (left_paren_return != NULL) {
+                } else if (left_paren_return_stack[return_stack_top] != NULL) {
                     current_node.lhs = create_node();
-                    *(current_node.lhs) = *left_paren_return;
+                    *(current_node.lhs) = 
+                                    *(left_paren_return_stack[return_stack_top]);
+                    left_paren_return_stack[return_stack_top] = NULL;
                     *focus_node = current_node;
-                    left_paren_return = NULL;
                 } else {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *(focus_node->rhs);
@@ -292,11 +297,12 @@ Node* parse_expression(TokenList* tokens, int* i) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
-                } else if (left_paren_return != NULL) {
+                } else if (left_paren_return_stack[return_stack_top] != NULL) {
                     current_node.lhs = create_node();
-                    *(current_node.lhs) = *left_paren_return;
+                    *(current_node.lhs) = 
+                                    *(left_paren_return_stack[return_stack_top]);
+                    left_paren_return_stack[return_stack_top] = NULL;
                     *focus_node = current_node;
-                    left_paren_return = NULL;
                 } else {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *(focus_node->rhs);
@@ -314,11 +320,12 @@ Node* parse_expression(TokenList* tokens, int* i) {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *focus_node;
                     *focus_node = current_node;
-                } else if (left_paren_return != NULL) {
+                } else if (left_paren_return_stack[return_stack_top] != NULL) {
                     current_node.lhs = create_node();
-                    *(current_node.lhs) = *left_paren_return;
+                    *(current_node.lhs) = 
+                                    *(left_paren_return_stack[return_stack_top]);
+                    left_paren_return_stack[return_stack_top] = NULL;
                     *focus_node = current_node;
-                    left_paren_return = NULL;
                 } else {
                     current_node.lhs = create_node();
                     *(current_node.lhs) = *(focus_node->rhs);
@@ -331,7 +338,8 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 if (expression->type == NONETYPE) {
                     expression->type = OPEN_PARENTHESIS_E;
                     expression->precedence = 0;
-                    left_paren_return = focus_node;
+                    left_paren_return_stack[return_stack_top] = focus_node;
+                    return_stack_top++;
                     (*i)++;
                     continue;
                 }
@@ -340,7 +348,8 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 focus_node->rhs = create_node();
                 *(focus_node->rhs) = current_node;
                 focus_node = focus_node->rhs;
-                left_paren_return = focus_node;
+                left_paren_return_stack[return_stack_top] = focus_node;
+                return_stack_top++;
                 (*i)++;
                 break;
             case RIGHT_PARENTHESIS:
@@ -348,7 +357,8 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 current_node.precedence = 0;
                 focus_node->rhs->rhs = create_node();
                 *(focus_node->rhs->rhs) = current_node;
-                focus_node = left_paren_return;
+                return_stack_top--;
+                focus_node = left_paren_return_stack[return_stack_top];
                 (*i)++;
                 break;
             case SEMICOLON:
