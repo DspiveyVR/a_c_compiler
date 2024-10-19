@@ -33,13 +33,6 @@ typedef struct NodeList {
 } NodeList;
 
 typedef struct Node {
-    NodeType type;
-    DataType datatype;
-    union {
-        uint64_t value;
-        char* name;
-    };
-    uint8_t precedence;
     union {
         struct {
             struct Node* lhs;
@@ -47,6 +40,13 @@ typedef struct Node {
         };
         NodeList* nodes;
     };
+    union {
+        uint64_t value;
+        char* name;
+    };
+    NodeType type;
+    DataType datatype;
+    uint8_t precedence;
 } Node;
 
 Node* create_node();
@@ -76,9 +76,8 @@ Node* parse_block(TokenList* tokens, int* i) {
 
                 (*i)++;
                 while (tokens->tokens[*i]->type != RIGHT_BRACKET) {
-                    if (*i >= block->nodes->capacity) {
-                        increase_node_list_capacity(block->nodes, 
-                                                    block->nodes->capacity + 5);
+                    if (node_index >= block->nodes->capacity) {
+                        increase_node_list_capacity(block->nodes, block->nodes->capacity + 5);
                     }
 
                     switch (tokens->tokens[*i]->type) {
@@ -107,17 +106,25 @@ Node* parse_block(TokenList* tokens, int* i) {
                     (*i)++;
                     header->rhs = parse_expression(tokens, i);
                 } else if (strncmp(tokens->tokens[*i]->value, "int", 3) == 0) {
-                    //TODO this should be the function thing
+                    header = create_node();
+                    header->type = FUNCTION_DEFINITION_H;
+                    header->datatype = INT;
+                    header->name = calloc(50, 1);
+                    strncpy(header->name, tokens->tokens[*i + 1]->value, 50);
+                    *i += 3;
+                    if (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {
+                        header->nodes = initialize_node_list(5);
+                        int node_index = 0;
+                        if (node_index >= header->nodes->capacity) {
+                            increase_node_list_capacity(block->nodes, block->nodes->capacity + 5);
+                        }
+                        while (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {
+                            header->nodes->nodes[node_index] = parse_statement(tokens, i);                           
+                            node_index++;
+                        }
+                    }
                     (*i)++;
                 }
-                }
-                break;
-            case IDENTIFIER:
-                {
-                // FIXME: lazy
-                header = create_node();
-                header->type = FUNCTION_DEFINITION_H;
-                *i += 3;
                 }
                 break;
             case RIGHT_BRACKET:
@@ -152,11 +159,13 @@ Node* parse_statement(TokenList* tokens, int* i) {
                 }
                 break;
             case SEMICOLON:
+            case COMMA:
                 (*i)++;
                 return statement;
             case NONE:
             case LEFT_BRACKET:
             case RIGHT_BRACKET:
+            case RIGHT_PARENTHESIS:
                 return statement;
             // This encompasses any statement which is just an expression,
             // including assignment.
@@ -353,6 +362,9 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 (*i)++;
                 break;
             case RIGHT_PARENTHESIS:
+                /*if (left_paren_return_stack[return_stack_top] == NULL) {*/
+                /*    return expression;*/
+                /*}*/
                 current_node.type = CLOSE_PARENTHESIS_E;
                 current_node.precedence = 0;
                 focus_node->rhs->rhs = create_node();
@@ -362,6 +374,7 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 (*i)++;
                 break;
             case SEMICOLON:
+            case COMMA:
             case LEFT_BRACKET:
             case RIGHT_BRACKET:
             case NONE:
@@ -383,14 +396,22 @@ Node* create_node() {
 }
 
 void destroy_node(Node* node) {
-    if ((node->type == VARIABLE_E) ||
+    if ((node->type == VARIABLE_E) || 
             (node->type == VARIABLE_DECLARATION_S)) {
         free(node->name);
     } else if (node->type == BLOCK) {
         destroy_node_list(node->nodes);
         free(node);
         return;
+    } else if (node->type == FUNCTION_DEFINITION_H) {
+        if (node->nodes != NULL) {
+            destroy_node_list(node->nodes);
+        }
+        free(node->name);
+        free(node);
+        return;
     }
+
     if (node->lhs != NULL) {
         destroy_node(node->lhs);
     }

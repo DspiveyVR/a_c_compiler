@@ -15,6 +15,7 @@ typedef enum TokenType {
     LEFT_BRACKET,
     RIGHT_BRACKET,
     SEMICOLON,
+    COMMA,
     PLUS,
     STAR,
     INVALID,

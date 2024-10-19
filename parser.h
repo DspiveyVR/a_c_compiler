@@ -33,13 +33,6 @@ typedef struct NodeList {
 } NodeList;
 
 typedef struct Node {
-    NodeType type;
-    DataType datatype;
-    union {
-        uint64_t value;
-        char* name;
-    };
-    uint8_t precedence;
     union {
         struct {
             struct Node* lhs;
@@ -47,6 +40,13 @@ typedef struct Node {
         };
         NodeList* nodes;
     };
+    union {
+        uint64_t value;
+        char* name;
+    };
+    NodeType type;
+    DataType datatype;
+    uint8_t precedence;
 } Node;
 
 Node* create_node();

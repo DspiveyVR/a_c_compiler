@@ -128,7 +128,17 @@ void print_ast(Node* node, int indentation) {
         case FUNCTION_DEFINITION_H:
             clear();
             printf("FUNCTION_DEFINITION_H(");
-            print_ast(node->rhs, indentation);
+            // FIXME: more datatypes later.
+            printf("(INT, \"%s\")", node->name);
+            if (node->nodes != NULL) {
+                printf(", ");
+                for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
+                    print_ast(node->nodes->nodes[i], indentation);
+                    if (node->nodes->nodes[i + 1] != NULL) {
+                        printf(", ");
+                    }
+                }
+            }
             clear();
             printf(")");
             break;
@@ -206,7 +216,7 @@ void print_ast(Node* node, int indentation) {
         case VARIABLE_DECLARATION_S:
             clear();           
             // INT is only type so it's hardcoded for now.
-            printf("VAR_DECLARATION(%s,%s)", "INT", node->name);
+            printf("VAR_DECLARATION(%s, %s)", "INT", node->name);
             break;
         case ASSIGNMENT_E:
             clear();
@@ -296,6 +306,9 @@ void enum_to_str(char* buf, TokenType type) {
             break;
         case IDENTIFIER:
             strncpy(buf, "IDENTIFIER", 11);
+            break;
+        case COMMA: 
+            strncpy(buf, "COMMA", 6);
             break;
         case EQUALS: 
             strncpy(buf, "EQUALS", 7);
