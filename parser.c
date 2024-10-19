@@ -362,13 +362,14 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 (*i)++;
                 break;
             case RIGHT_PARENTHESIS:
-                /*if (left_paren_return_stack[return_stack_top] == NULL) {*/
-                /*    return expression;*/
-                /*}*/
                 current_node.type = CLOSE_PARENTHESIS_E;
                 current_node.precedence = 0;
-                focus_node->rhs->rhs = create_node();
-                *(focus_node->rhs->rhs) = current_node;
+                Node** closeptr = &(focus_node->rhs->rhs);
+                while (*closeptr != NULL) {
+                    closeptr = &((**closeptr).rhs);
+                }
+                *closeptr = create_node();
+                **closeptr = current_node;
                 return_stack_top--;
                 focus_node = left_paren_return_stack[return_stack_top];
                 (*i)++;

@@ -1,4 +1,8 @@
 int main() {
-    return (2 + (3));
+    if (1) {
+        return (((2 + (3 * (2))) * 4));
+    }
+
+    return 3;
 }
 
