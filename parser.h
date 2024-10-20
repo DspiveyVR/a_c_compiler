@@ -24,6 +24,10 @@ typedef enum NodeType {
 typedef enum DataType {
     VOID,
     INT,
+    CHAR,
+    FLOAT,
+    DOUBLE,
+    PTR,
 } DataType;
 
 struct Node;
@@ -31,6 +35,11 @@ typedef struct NodeList {
     struct Node** nodes;
     int capacity;
 } NodeList;
+
+typedef struct TypeNode {
+    DataType datatype;
+    struct TypeNode* points_to;
+} TypeNode;
 
 typedef struct Node {
     union {
@@ -45,7 +54,7 @@ typedef struct Node {
         char* name;
     };
     NodeType type;
-    DataType datatype;
+    TypeNode* datatype;
     uint8_t precedence;
 } Node;
 

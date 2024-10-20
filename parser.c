@@ -24,6 +24,10 @@ typedef enum NodeType {
 typedef enum DataType {
     VOID,
     INT,
+    CHAR,
+    FLOAT,
+    DOUBLE,
+    PTR,
 } DataType;
 
 struct Node;
@@ -31,6 +35,11 @@ typedef struct NodeList {
     struct Node** nodes;
     int capacity;
 } NodeList;
+
+typedef struct TypeNode {
+    DataType datatype;
+    struct TypeNode* points_to;
+} TypeNode;
 
 typedef struct Node {
     union {
@@ -45,13 +54,15 @@ typedef struct Node {
         char* name;
     };
     NodeType type;
-    DataType datatype;
+    TypeNode* datatype;
     uint8_t precedence;
 } Node;
 
 Node* create_node();
 void destroy_node(Node* node);
 Node* parse_expression(TokenList* tokens, int* i);
+TypeNode* parse_datatype(TokenList* tokens, int* i);
+void destroy_datatype(TypeNode* type);
 Node* parse_statement(TokenList* tokens, int* i);
 NodeList* initialize_node_list(int capacity);
 void destroy_node_list(NodeList* array);
@@ -61,7 +72,6 @@ Node* parse_block(TokenList* tokens, int* i) {
     Node* block = create_node();
     Node* header = NULL;
     block->type = BLOCK;
-    /*NodeList left_bracket_return_stack;*/
 
     while (*i < tokens->length) { 
         switch (tokens->tokens[*i]->type) {
@@ -108,10 +118,10 @@ Node* parse_block(TokenList* tokens, int* i) {
                 } else if (strncmp(tokens->tokens[*i]->value, "int", 3) == 0) {
                     header = create_node();
                     header->type = FUNCTION_DEFINITION_H;
-                    header->datatype = INT;
+                    header->datatype = parse_datatype(tokens, i);
                     header->name = calloc(50, 1);
-                    strncpy(header->name, tokens->tokens[*i + 1]->value, 50);
-                    *i += 3;
+                    strncpy(header->name, tokens->tokens[*i]->value, 50);
+                    *i += 2;
                     if (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {
                         header->nodes = initialize_node_list(5);
                         int node_index = 0;
@@ -143,14 +153,17 @@ Node* parse_statement(TokenList* tokens, int* i) {
     while (*i < tokens->length) { 
         switch (tokens->tokens[*i]->type) {
             case KEYWORD:
-                if (strncmp(tokens->tokens[*i]->value, "int", 3) == 0) {
+                if ((strncmp(tokens->tokens[*i]->value, "int", 3) == 0) ||
+                     (strncmp(tokens->tokens[*i]->value, "char", 4) == 0) ||
+                     (strncmp(tokens->tokens[*i]->value, "float", 5) == 0) ||
+                     (strncmp(tokens->tokens[*i]->value, "double", 6) == 0) ||
+                     (strncmp(tokens->tokens[*i]->value, "void", 4) == 0)) {
                     statement = create_node();
-                    // FIXME: this one will have to change a lot later.
                     statement->type = VARIABLE_DECLARATION_S;
-                    statement->datatype = INT;
+                    statement->datatype = parse_datatype(tokens, i);
                     statement->name = malloc(50);
-                    strncpy(statement->name, tokens->tokens[(*i) + 1]->value, 50);
-                    *i += 2;
+                    strncpy(statement->name, tokens->tokens[*i]->value, 50);
+                    (*i)++;
                 } else if (strncmp(tokens->tokens[*i]->value, "return", 6) == 0) {
                     statement = create_node();
                     statement->type = RETURN_S;
@@ -177,6 +190,39 @@ Node* parse_statement(TokenList* tokens, int* i) {
     return statement;
 }
 
+// bad?
+TypeNode* parse_datatype(TokenList* tokens, int* i) {
+    TypeNode* type = malloc(sizeof(TypeNode));
+    type->points_to = NULL;
+    TypeNode* focus_node = type;
+    for (; tokens->tokens[*i]->type != IDENTIFIER; (*i)++);
+    int j = *i - 1;
+
+    while (tokens->tokens[j]->type == STAR) {
+        focus_node->datatype = PTR;
+        focus_node->points_to = malloc(sizeof(TypeNode));
+        focus_node = focus_node->points_to;
+        focus_node->points_to = NULL;
+        j--;
+    }
+
+    // It should always be a keyword.
+    if (strncmp(tokens->tokens[j]->value, "int", 3) == 0) {
+        focus_node->datatype = INT;
+    } else if (strncmp(tokens->tokens[j]->value, "char", 4) == 0) {
+        focus_node->datatype = CHAR;
+    } else if (strncmp(tokens->tokens[j]->value, "float", 5) == 0) {
+        focus_node->datatype = FLOAT;
+    } else if (strncmp(tokens->tokens[j]->value, "double", 6) == 0) {
+        focus_node->datatype = DOUBLE;
+    } else if (strncmp(tokens->tokens[j]->value, "void", 4) == 0) {
+        focus_node->datatype = VOID;
+    }
+
+
+    return type;
+}
+
 Node* parse_expression(TokenList* tokens, int* i) {
     /*
         "expression" is the full binary tree, it is usually not directly
@@ -198,7 +244,6 @@ Node* parse_expression(TokenList* tokens, int* i) {
     Node* expression = create_node();
     Node* focus_node = expression;
     /*
-     TODO: will need a stack of these
      When the parser encounters a closing parenthesis, this return address
      is assigned so that subsequent operators can be compared against the
      entire parenthetical expression with the assumption that this 
@@ -397,8 +442,10 @@ Node* create_node() {
 }
 
 void destroy_node(Node* node) {
-    if ((node->type == VARIABLE_E) || 
-            (node->type == VARIABLE_DECLARATION_S)) {
+    if (node->type == VARIABLE_E) {
+        free(node->name);
+    } if(node->type == VARIABLE_DECLARATION_S) {
+        destroy_datatype(node->datatype);
         free(node->name);
     } else if (node->type == BLOCK) {
         destroy_node_list(node->nodes);
@@ -408,6 +455,7 @@ void destroy_node(Node* node) {
         if (node->nodes != NULL) {
             destroy_node_list(node->nodes);
         }
+        destroy_datatype(node->datatype);
         free(node->name);
         free(node);
         return;
@@ -420,6 +468,14 @@ void destroy_node(Node* node) {
         destroy_node(node->rhs);
     }
     free(node);
+}
+
+void destroy_datatype(TypeNode* type) {
+    if (type->points_to != NULL) {
+        destroy_datatype(type->points_to);
+    }
+
+    free(type);
 }
 
 NodeList* initialize_node_list(int capacity) {

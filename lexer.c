@@ -122,6 +122,18 @@ void lex(TokenList* tokens, String* file_text) {
         if (strncmp(words.list[i]->string, "int", 3) == 0) {
             set_tklist_type(tokens, i, KEYWORD);
             set_tklist_string(tokens, i, "int");
+        } else if (strncmp(words.list[i]->string, "char", 4) == 0) {
+            set_tklist_type(tokens, i, KEYWORD);
+            set_tklist_string(tokens, i, "char");
+        } else if (strncmp(words.list[i]->string, "float", 5) == 0) {
+            set_tklist_type(tokens, i, KEYWORD);
+            set_tklist_string(tokens, i, "float");
+        } else if (strncmp(words.list[i]->string, "double", 6) == 0) {
+            set_tklist_type(tokens, i, KEYWORD);
+            set_tklist_string(tokens, i, "double");
+        } else if (strncmp(words.list[i]->string, "void", 4) == 0) {
+            set_tklist_type(tokens, i, KEYWORD);
+            set_tklist_string(tokens, i, "void");
         } else if (isnumber) {
             set_tklist_type(tokens, i, CONSTANT);
             set_tklist_string(tokens, i, words.list[i]->string);

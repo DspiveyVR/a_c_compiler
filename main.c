@@ -12,6 +12,7 @@ void enum_to_str(char* buf, TokenType type);
 /*void print_exp(Node* node);*/
 /*int eval_exp(Node* node);*/
 void print_ast(Node* node, int indentation);
+void print_datatype(TypeNode* type);
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -129,7 +130,9 @@ void print_ast(Node* node, int indentation) {
             clear();
             printf("FUNCTION_DEFINITION_H(");
             // FIXME: more datatypes later.
-            printf("(INT, \"%s\")", node->name);
+            printf("(");
+            print_datatype(node->datatype);
+            printf(", \"%s\")", node->name);
             if (node->nodes != NULL) {
                 printf(", ");
                 for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
@@ -216,7 +219,9 @@ void print_ast(Node* node, int indentation) {
         case VARIABLE_DECLARATION_S:
             clear();           
             // INT is only type so it's hardcoded for now.
-            printf("VAR_DECLARATION(%s, %s)", "INT", node->name);
+            printf("VAR_DECLARATION(");
+            print_datatype(node->datatype);
+            printf(", %s)", node->name);
             break;
         case ASSIGNMENT_E:
             clear();
@@ -242,6 +247,33 @@ void print_ast(Node* node, int indentation) {
     }
 
     return;
+}
+
+void print_datatype(TypeNode* type) {
+    switch (type->datatype) {
+        case INT:
+            printf("INT");
+            break;
+        case CHAR:
+            printf("CHAR");
+            break;       
+        case FLOAT:
+            printf("FLOAT");
+            break;
+        case DOUBLE:
+            printf("DOUBLE");
+            break;
+        case VOID:
+            printf("VOID");
+            break;
+        case PTR:
+            printf("PTR(");
+            print_datatype(type->points_to);
+            printf(")");
+            break;
+        default: 
+            break;
+    }
 }
 
 /*
