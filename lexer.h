@@ -18,6 +18,7 @@ typedef enum TokenType {
     COMMA,
     PLUS,
     STAR,
+    AMPERSAND,
     INVALID,
 } TokenType;
 

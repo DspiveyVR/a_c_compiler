@@ -100,7 +100,7 @@ void print_ast(Node* node, int indentation) {
             printf("\n");
             printf("%s", indentation_str);
             printf("BLOCK {\n");
-            for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
+            for (int i = 0; (node->nodes->nodes[i] != NULL) && (i < node->nodes->capacity); i++) {
                 switch (node->nodes->nodes[i]->type) {
                     case BLOCK:
                         print_ast(node->nodes->nodes[i], indentation + 2);
@@ -190,6 +190,16 @@ void print_ast(Node* node, int indentation) {
             clear();
             fg_bright_red();
             dim();
+            printf(")");
+            break;
+        case DEREFERENCE_E:
+            printf("DEREF(");
+            print_ast(node->rhs, indentation);
+            printf(")");
+            break;
+        case ADDRESS_OF_E:
+            printf("ADDR(");
+            print_ast(node->rhs, indentation);
             printf(")");
             break;
         case LOGICAL_EQUALS_E:
@@ -356,6 +366,9 @@ void enum_to_str(char* buf, TokenType type) {
             break;
         case STAR:
             strncpy(buf, "STAR", 5);
+            break;
+        case AMPERSAND:
+            strncpy(buf, "AMPERSAND", 10);
             break;
         case STRING_LITERAL:
             strncpy(buf, "STRING_LITERAL", 15);
