@@ -20,6 +20,9 @@ typedef enum NodeType {
     RETURN_S,
     FUNCTION_DECLARATION_H,
     FUNCTION_DEFINITION_H,
+    FUNCTION_CALL_E,
+    // Well well well, if it isn't the consequences of my own actions.
+    ARGUMENT_E,
     IF_H,
     BLOCK,
 } NodeType;
@@ -144,6 +147,7 @@ Node* parse_block(TokenList* tokens, int* i) {
                 (*i)++;
                 return block;
             default:
+                (*i)++;
                 break;
         }
     }
@@ -280,6 +284,18 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 (*i)++;
                 break;
             case IDENTIFIER:
+                if (tokens->tokens[*i + 1]->type == LEFT_PARENTHESIS) {
+                    current_node.type = FUNCTION_CALL_E;
+                    current_node.name = malloc(50);
+                    current_node.precedence = 16;
+                    strncpy(current_node.name, tokens->tokens[*i]->value, 50);
+                    current_node.nodes = initialize_node_list(5);
+                    focus_node->rhs = create_node();
+                    *(focus_node->rhs) = current_node;
+                    focus_node = focus_node->rhs;
+                    (*i)++;
+                    continue;
+                }
                 if (expression->type == NONETYPE) {
                     expression->type = VARIABLE_E;
                     expression->name = malloc(50);
@@ -317,7 +333,6 @@ Node* parse_expression(TokenList* tokens, int* i) {
                     *(focus_node->rhs) = current_node;
                     focus_node = focus_node->rhs;
                 }
-
                 (*i)++;
                 break;
             case STAR:
@@ -434,12 +449,20 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 *(focus_node->rhs) = current_node;
                 left_paren_return_stack[return_stack_top] = focus_node;
                 return_stack_top++;
-                focus_node = focus_node->rhs;
+                if (focus_node->type == FUNCTION_CALL_E && tokens->tokens[*i + 1]->type != RIGHT_PARENTHESIS) {
+                    focus_node->nodes->nodes[0] = create_node();
+                    focus_node->nodes->nodes[0]->type = ARGUMENT_E;
+                    focus_node->nodes->nodes[0]->precedence = 16;
+                    focus_node = focus_node->nodes->nodes[0];
+                } else {
+                    focus_node = focus_node->rhs;
+                }
                 (*i)++;
                 break;
             case RIGHT_PARENTHESIS:
                 current_node.type = CLOSE_PARENTHESIS_E;
                 current_node.precedence = 0;
+                // Checks how many layers deep the parentheses are.
                 Node** closeptr = &(focus_node->rhs->rhs);
                 while (*closeptr != NULL) {
                     closeptr = &((**closeptr).rhs);
@@ -450,8 +473,20 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 focus_node = left_paren_return_stack[return_stack_top];
                 (*i)++;
                 break;
-            case SEMICOLON:
             case COMMA:
+                if (tokens->tokens[*i + 1]->type != RIGHT_PARENTHESIS) {
+                    for (int node_index = 0; node_index < left_paren_return_stack[return_stack_top - 1]->nodes->capacity; node_index++) {
+                        if (left_paren_return_stack[return_stack_top - 1]->nodes->nodes[node_index] == NULL) {
+                            left_paren_return_stack[return_stack_top - 1]->nodes->nodes[node_index] = create_node();
+                            left_paren_return_stack[return_stack_top - 1]->nodes->nodes[node_index]->type = ARGUMENT_E;
+                            left_paren_return_stack[return_stack_top - 1]->nodes->nodes[node_index]->precedence = 16;
+                            focus_node = left_paren_return_stack[return_stack_top - 1]->nodes->nodes[node_index];
+                        }
+                    }
+                }
+                (*i)++;
+                break;
+            case SEMICOLON:
             case LEFT_BRACKET:
             case RIGHT_BRACKET:
             case NONE:
@@ -487,6 +522,13 @@ void destroy_node(Node* node) {
             destroy_node_list(node->nodes);
         }
         destroy_datatype(node->datatype);
+        free(node->name);
+        free(node);
+        return;
+    } else if (node->type == FUNCTION_CALL_E) {
+        if (node->nodes != NULL) {
+            destroy_node_list(node->nodes);
+        }
         free(node->name);
         free(node);
         return;

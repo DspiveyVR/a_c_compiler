@@ -19,6 +19,9 @@ typedef enum NodeType {
     RETURN_S,
     FUNCTION_DECLARATION_H,
     FUNCTION_DEFINITION_H,
+    FUNCTION_CALL_E,
+    // Well well well, if it isn't the consequences of my own actions.
+    ARGUMENT_E,
     IF_H,
     BLOCK,
 } NodeType;
@@ -65,7 +68,7 @@ void destroy_node(Node* node);
 Node* parse_expression(TokenList* tokens);
 Node* parse_statement(TokenList* tokens, int* i);
 Node* parse_block(TokenList* tokens, int* i);
-void initialize_node_list(NodeList* array, int length);
+NodeList* initialize_node_list(int capacity);
 void destroy_node_list(NodeList* array);
 void increase_node_list_capacity(NodeList* array, int new_capacity);
 

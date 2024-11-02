@@ -56,16 +56,27 @@ int main(int argc, char** argv) {
     }
 
     int token_index = 0;
-    Node* block = parse_block(&tokens, &token_index);
+    Node* ast = create_node();
+    ast->type = BLOCK;
+    ast->nodes = initialize_node_list(5);
+    int node_index = 0;
+    while (token_index < tokens.length && tokens.tokens[token_index]->type != NONE) {
+        if (node_index >= ast->nodes->capacity) {
+            increase_node_list_capacity(ast->nodes, ast->nodes->capacity + 5);
+        }
+        ast->nodes->nodes[node_index] = parse_block(&tokens, &token_index);
+        node_index++;
+    }
+    /*Node* block = parse_block(&tokens, &token_index);*/
     printf("\n");
     bg_magenta();
     bold();
     printf("AST");
     clear();
     printf("\n");
-    print_ast(block, 0);
+    print_ast(ast, 0);
     destroy_token_list(&tokens);
-    destroy_node(block);
+    destroy_node(ast);
 
 
 
@@ -133,6 +144,21 @@ void print_ast(Node* node, int indentation) {
             printf("(");
             print_datatype(node->datatype);
             printf(", \"%s\")", node->name);
+            if (node->nodes != NULL) {
+                printf(", ");
+                for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
+                    print_ast(node->nodes->nodes[i], indentation);
+                    if (node->nodes->nodes[i + 1] != NULL) {
+                        printf(", ");
+                    }
+                }
+            }
+            clear();
+            printf(")");
+            break;
+        case FUNCTION_CALL_E:
+            clear();
+            printf("FUNCTION_CALL_E((\"%s\")", node->name);
             if (node->nodes != NULL) {
                 printf(", ");
                 for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
@@ -249,6 +275,9 @@ void print_ast(Node* node, int indentation) {
             print_ast(node->rhs, indentation);
             clear();
             printf(")");
+            break;
+        case ARGUMENT_E:
+            print_ast(node->rhs, indentation);
             break;
         case NONETYPE:
             clear(); 
