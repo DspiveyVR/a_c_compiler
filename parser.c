@@ -285,6 +285,15 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 break;
             case IDENTIFIER:
                 if (tokens->tokens[*i + 1]->type == LEFT_PARENTHESIS) {
+                    if (expression->type == NONETYPE) { 
+                        expression->type = FUNCTION_CALL_E;
+                        expression->name = malloc(50);
+                        expression->precedence = 16;
+                        strncpy(expression->name, tokens->tokens[*i]->value, 50);
+                        expression->nodes = initialize_node_list(5);
+                        (*i)++;
+                        continue;
+                    }
                     current_node.type = FUNCTION_CALL_E;
                     current_node.name = malloc(50);
                     current_node.precedence = 16;
@@ -481,6 +490,7 @@ Node* parse_expression(TokenList* tokens, int* i) {
                             left_paren_return_stack[return_stack_top - 1]->nodes->nodes[node_index]->type = ARGUMENT_E;
                             left_paren_return_stack[return_stack_top - 1]->nodes->nodes[node_index]->precedence = 16;
                             focus_node = left_paren_return_stack[return_stack_top - 1]->nodes->nodes[node_index];
+                            break;
                         }
                     }
                 }

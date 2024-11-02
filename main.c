@@ -158,17 +158,21 @@ void print_ast(Node* node, int indentation) {
             break;
         case FUNCTION_CALL_E:
             clear();
+            fg_bright_red();
             printf("FUNCTION_CALL_E((\"%s\")", node->name);
             if (node->nodes != NULL) {
+                clear();
                 printf(", ");
                 for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
                     print_ast(node->nodes->nodes[i], indentation);
                     if (node->nodes->nodes[i + 1] != NULL) {
+                        clear();
                         printf(", ");
                     }
                 }
             }
             clear();
+            fg_bright_red();
             printf(")");
             break;
         case INTEGER_E:

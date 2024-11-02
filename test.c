@@ -1,4 +1,13 @@
+int square(int a) {
+    return a * a;
+}
+
 int main() {
-    return 1 * square(a, b);
+    int* a;
+    int b;
+    b = 5;
+    *a = b;
+
+    return square(*a);
 }
 
