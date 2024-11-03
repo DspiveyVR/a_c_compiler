@@ -21,7 +21,6 @@ typedef enum NodeType {
     FUNCTION_DECLARATION_H,
     FUNCTION_DEFINITION_H,
     FUNCTION_CALL_E,
-    // Well well well, if it isn't the consequences of my own actions.
     ARGUMENT_E,
     IF_H,
     BLOCK,
@@ -44,6 +43,7 @@ typedef struct NodeList {
 
 typedef struct TypeNode {
     DataType datatype;
+    uint8_t size;
     struct TypeNode* points_to;
 } TypeNode;
 
@@ -197,7 +197,6 @@ Node* parse_statement(TokenList* tokens, int* i) {
     return statement;
 }
 
-// bad?
 TypeNode* parse_datatype(TokenList* tokens, int* i) {
     TypeNode* type = malloc(sizeof(TypeNode));
     type->points_to = NULL;
@@ -207,6 +206,7 @@ TypeNode* parse_datatype(TokenList* tokens, int* i) {
 
     while (tokens->tokens[j]->type == STAR) {
         focus_node->datatype = PTR;
+        focus_node->size = 8;
         focus_node->points_to = malloc(sizeof(TypeNode));
         focus_node = focus_node->points_to;
         focus_node->points_to = NULL;
@@ -216,12 +216,16 @@ TypeNode* parse_datatype(TokenList* tokens, int* i) {
     // It should always be a keyword.
     if (strncmp(tokens->tokens[j]->value, "int", 3) == 0) {
         focus_node->datatype = INT;
+        focus_node->size = 4;
     } else if (strncmp(tokens->tokens[j]->value, "char", 4) == 0) {
         focus_node->datatype = CHAR;
+        focus_node->size = 1;
     } else if (strncmp(tokens->tokens[j]->value, "float", 5) == 0) {
         focus_node->datatype = FLOAT;
+        focus_node->size = 4;
     } else if (strncmp(tokens->tokens[j]->value, "double", 6) == 0) {
         focus_node->datatype = DOUBLE;
+        focus_node->size = 8;
     } else if (strncmp(tokens->tokens[j]->value, "void", 4) == 0) {
         focus_node->datatype = VOID;
     }

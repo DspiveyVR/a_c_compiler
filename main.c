@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
     initialize_token_list(&tokens, 5);
 
     lex(&tokens, &file_text);
-    free(file_text.string);
+    destroy_string(&file_text);
 
     bg_red();
     bold();
@@ -76,25 +76,23 @@ int main(int argc, char** argv) {
     printf("\n");
     print_ast(ast, 0);
     destroy_token_list(&tokens);
+
+
+
+    String asm_text;
+    initialize_string(&asm_text, 5);
+    generate_assembly(&asm_text, ast);
     destroy_node(ast);
-
-
-
-    /*String asm_text;*/
-    /*initialize_string(&asm_text, 10);*/
-    /*generate_assembly(&asm_text ,expression);*/
-    /*printf("%s", asm_text.string);*/
-    /*FILE* asm_file;*/
-    /*asm_file = fopen("asm.s", "w");*/
-    /*if (asm_file == NULL) {*/
-    /*    printf("error opening file\n");*/
-    /*    exit(1);*/
-    /*}*/
-    /*fprintf(asm_file, "%s", asm_text.string);*/
-    /*fclose(asm_file);*/
-    /*free(asm_text.string);*/
-    /*destroy_node(expression);*/
-
+    printf("%s", asm_text.string);
+    FILE* asm_file;
+    asm_file = fopen("asm.s", "w");
+    if (asm_file == NULL) {
+        printf("error opening file\n");
+        exit(1);
+    }
+    fprintf(asm_file, "%s", asm_text.string);
+    fclose(asm_file);
+    destroy_string(&asm_text);
 
     return 0;
 }

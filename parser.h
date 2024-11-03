@@ -43,6 +43,7 @@ typedef struct NodeList {
 
 typedef struct TypeNode {
     DataType datatype;
+    uint8_t size;
     struct TypeNode* points_to;
 } TypeNode;
 
