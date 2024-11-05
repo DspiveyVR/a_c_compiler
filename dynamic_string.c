@@ -26,8 +26,8 @@ void set_string(String* string, char* input_string, int bytes) {
 
 void set_string_at(String* string, char* input_string, int index, int bytes) {
     if ((index + bytes) >= string->length) {
-        string->string = realloc((void*)(string->string), (index + bytes));
-        string->length = (index + bytes);
+        string->string = realloc((void*)(string->string), (index + bytes) + 1);
+        string->length = (index + bytes) + 1;
         memset(string->string + index, 0, bytes + 1);
     }
     strncpy(string->string + index, input_string, bytes);

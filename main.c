@@ -77,10 +77,8 @@ int main(int argc, char** argv) {
     print_ast(ast, 0);
     destroy_token_list(&tokens);
 
-
-
     String asm_text;
-    initialize_string(&asm_text, 5);
+    initialize_string(&asm_text, 100);
     generate_assembly(&asm_text, ast);
     destroy_node(ast);
     printf("%s", asm_text.string);
