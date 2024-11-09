@@ -23,7 +23,7 @@ typedef struct VariableList {
 void unravel_block(String* asm_string, Node* input_node, 
                         uint32_t* str_i, uint8_t scope_level, 
                         uint32_t stack_top, VariableList* variables);
-void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i);
+void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, VariableList* variables);
 VariableList* initialize_variable_list(int capacity);
 void push_var(VariableList* array, Variable* var);
 void pop_var(VariableList* array);
@@ -73,7 +73,6 @@ void unravel_block(String* asm_string, Node* input_node,
                 set_string_at(asm_string, asm_code2, *str_i, strlen(input_node->nodes->nodes[i]->name) + 2);
                 *str_i += strlen(input_node->nodes->nodes[i]->name) + 2;
                 set_string_at(asm_string, "push %rbp\n", *str_i, 10);
-                stack_top += 8;
                 *str_i += 10;
                 set_string_at(asm_string, "mov %rsp, %rbp\n", *str_i, 15);
                 *str_i += 15;
@@ -81,34 +80,46 @@ void unravel_block(String* asm_string, Node* input_node,
                 break;
             case RETURN_S:
                 {
+                String expression_code;
+                if (input_node->nodes->nodes[i]->rhs != NULL) {
+                    initialize_string(&expression_code, 5);
+                    uint32_t exp_str_i = 0;
+                    unravel_expression(&expression_code, input_node->nodes->nodes[i]->rhs, &exp_str_i, variables);
+                    uint32_t code_len = strnlen(expression_code.string, expression_code.length);
+                    set_string_at(asm_string, expression_code.string, *str_i, code_len);
+                    *str_i += code_len;
+                    destroy_string(&expression_code);
+                }
                 uint32_t bytes_to_reclaim = 0;
                 for (int i = variables->length - 1; 
                         i >= 0 && variables->variables[i] != NULL && variables->variables[i]->scope_level == scope_level; i--) {
                     bytes_to_reclaim += variables->variables[i]->datatype->size;
                     pop_var(variables);
                 }
-                char asm_code[13 + bytes_to_reclaim / 10 + 1];
-                sprintf(asm_code, "add $%d, %%rsp\n", bytes_to_reclaim);
-                set_string_at(asm_string, asm_code, *str_i, 13 + bytes_to_reclaim / 10);
-                *str_i += 13 + bytes_to_reclaim / 10;
+                if (bytes_to_reclaim > 0) {
+                    char asm_code[13 + bytes_to_reclaim / 10 + 1];
+                    sprintf(asm_code, "add $%d, %%rsp\n", bytes_to_reclaim);
+                    set_string_at(asm_string, asm_code, *str_i, 13 + bytes_to_reclaim / 10);
+                    *str_i += 13 + bytes_to_reclaim / 10;
+                }
                 set_string_at(asm_string, "pop %rbp\n", *str_i, 9);
                 *str_i += 9;
 
-                if (input_node->nodes->nodes[i]->rhs != NULL) {
-                    String expression_code;
-                    initialize_string(&expression_code, 5);
-                    uint32_t exp_str_i = 0;
-                    unravel_expression(&expression_code, input_node->nodes->nodes[i]->rhs, &exp_str_i);
-                    uint32_t code_len = strnlen(expression_code.string, expression_code.length);
-                    set_string_at(asm_string, expression_code.string, *str_i, code_len);
-                    *str_i += code_len;
-                    destroy_string(&expression_code);
-                }
                 set_string_at(asm_string, "ret\n", *str_i, 4);
                 *str_i += 4;
                 }
                 return;
             default:
+                {
+                String expression_code;
+                initialize_string(&expression_code, 5);
+                uint32_t exp_str_i = 0;
+                unravel_expression(&expression_code, input_node->nodes->nodes[i], &exp_str_i, variables);
+                uint32_t code_len = strnlen(expression_code.string, expression_code.length);
+                set_string_at(asm_string, expression_code.string, *str_i, code_len);
+                *str_i += code_len;
+                destroy_string(&expression_code);
+                }
                 break;
         }
     }
@@ -119,15 +130,55 @@ void unravel_block(String* asm_string, Node* input_node,
         bytes_to_reclaim += variables->variables[i]->datatype->size;
         pop_var(variables);
     }
-    char asm_code[13 + bytes_to_reclaim / 10 + 1];
+    if (bytes_to_reclaim > 0) {
+        char asm_code[13 + bytes_to_reclaim / 10 + 1];
+        sprintf(asm_code, "add $%d, %%rsp\n", bytes_to_reclaim);
+        set_string_at(asm_string, asm_code, *str_i, 13 + bytes_to_reclaim / 10);
+        *str_i += 13 + bytes_to_reclaim / 10;
+    }
 
     return;
 }
 
-void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i) {
+void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, VariableList* variables) {
     switch (input_node->type) {
         case VARIABLE_E:
+            {
+            uint32_t var_stack_index = 0;
+            for (int i = 0; i < variables->length; i++) {
+                if (strncmp(variables->variables[i]->name, input_node->name, 50) == 0) {
+                    var_stack_index = variables->variables[i]->stack_index;
+                }
+            }
+            char asm_code[19 + var_stack_index / 10 + 1];
+            sprintf(asm_code, "mov -%d(%%rbp), %%rax\n", var_stack_index);
+            set_string_at(asm_string, asm_code, *str_i, 19 + var_stack_index / 10);
+            *str_i += (19 + var_stack_index / 10);
+            }
+            break;
+        case ASSIGNMENT_E:
+            {
+            String expression_code;
+            initialize_string(&expression_code, 5);
+            uint32_t exp_str_i = 0;
+            unravel_expression(&expression_code, input_node->rhs, &exp_str_i, variables);
+            uint32_t code_len = strnlen(expression_code.string, expression_code.length);
+            set_string_at(asm_string, expression_code.string, *str_i, code_len);
+            *str_i += code_len;
+            destroy_string(&expression_code);
 
+            uint32_t var_stack_index = 0;
+            for (int i = 0; i < variables->length; i++) {
+                if (strncmp(variables->variables[i]->name, input_node->lhs->name, 50) == 0) {
+                    var_stack_index = variables->variables[i]->stack_index;
+                }
+            }
+
+            char asm_code[19 + var_stack_index / 10 + 1];
+            sprintf(asm_code, "mov %%rax, -%d(%%rbp)\n", var_stack_index);
+            set_string_at(asm_string, asm_code, *str_i, 19 + var_stack_index / 10);
+            *str_i += (19 + var_stack_index / 10);
+            }
             break;
         case INTEGER_E:
             {
@@ -139,12 +190,12 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i) {
             break;
         case ADDITION_E:
             {
-            unravel_expression(asm_string, input_node->lhs, str_i);
+            unravel_expression(asm_string, input_node->lhs, str_i, variables);
             char asm_code[11];
             sprintf(asm_code, "push %%rax\n");
             set_string_at(asm_string, asm_code, *str_i, 10);
             *str_i += 10;
-            unravel_expression(asm_string, input_node->rhs, str_i);
+            unravel_expression(asm_string, input_node->rhs, str_i, variables);
             char asm_code2[10];
             sprintf(asm_code2, "pop %%rcx\n");
             char asm_code3[16];
@@ -157,12 +208,12 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i) {
             break;
         case MULTIPLICATION_E:
             {
-            unravel_expression(asm_string, input_node->lhs, str_i);
+            unravel_expression(asm_string, input_node->lhs, str_i, variables);
             char asm_code[11];
             sprintf(asm_code, "push %%rax\n");
             set_string_at(asm_string, asm_code, *str_i, 10);
             *str_i += 10;
-            unravel_expression(asm_string, input_node->rhs, str_i);
+            unravel_expression(asm_string, input_node->rhs, str_i, variables);
             char asm_code2[10];
             sprintf(asm_code2, "pop %%rcx\n");
             char asm_code3[17];
@@ -174,7 +225,7 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i) {
             }
             break;
         case OPEN_PARENTHESIS_E:
-            unravel_expression(asm_string, input_node->rhs, str_i);
+            unravel_expression(asm_string, input_node->rhs, str_i, variables);
             break;
         case CLOSE_PARENTHESIS_E:
         case NONETYPE:

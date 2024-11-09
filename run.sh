@@ -1,3 +1,3 @@
-gcc asm.s -o asm
+gcc asm.s -g -o asm
 ./asm
 echo $?
