@@ -50,11 +50,11 @@ void unravel_block(String* asm_string, Node* input_node,
                 new_var->name = input_node->nodes->nodes[i]->name;
                 new_var->datatype = input_node->nodes->nodes[i]->datatype;
                 new_var->scope_level = scope_level;
-                new_var->stack_index = stack_top;
                 push_var(variables, new_var);
                 char asm_code[13 + new_var->datatype->size / 10 + 1];
                 sprintf(asm_code, "sub $%d, %%rsp\n", new_var->datatype->size);
                 stack_top += new_var->datatype->size;
+                new_var->stack_index = stack_top;
                 set_string_at(asm_string, asm_code, *str_i, 13 + new_var->datatype->size / 10);
                 *str_i += 13 + new_var->datatype->size / 10;
                 }
@@ -90,18 +90,20 @@ void unravel_block(String* asm_string, Node* input_node,
                     *str_i += code_len;
                     destroy_string(&expression_code);
                 }
-                uint32_t bytes_to_reclaim = 0;
-                for (int i = variables->length - 1; 
-                        i >= 0 && variables->variables[i] != NULL && variables->variables[i]->scope_level == scope_level; i--) {
-                    bytes_to_reclaim += variables->variables[i]->datatype->size;
-                    pop_var(variables);
-                }
-                if (bytes_to_reclaim > 0) {
-                    char asm_code[13 + bytes_to_reclaim / 10 + 1];
-                    sprintf(asm_code, "add $%d, %%rsp\n", bytes_to_reclaim);
-                    set_string_at(asm_string, asm_code, *str_i, 13 + bytes_to_reclaim / 10);
-                    *str_i += 13 + bytes_to_reclaim / 10;
-                }
+                /*uint32_t bytes_to_reclaim = 0;*/
+                /*for (int i = variables->length - 1; */
+                /*        i >= 0 && variables->variables[i] != NULL && variables->variables[i]->scope_level == scope_level; i--) {*/
+                /*    bytes_to_reclaim += variables->variables[i]->datatype->size;*/
+                /*    pop_var(variables);*/
+                /*}*/
+                /*if (bytes_to_reclaim > 0) {*/
+                /*    char asm_code[13 + bytes_to_reclaim / 10 + 1];*/
+                /*    sprintf(asm_code, "add $%d, %%rsp\n", bytes_to_reclaim);*/
+                /*    set_string_at(asm_string, asm_code, *str_i, 13 + bytes_to_reclaim / 10);*/
+                /*    *str_i += 13 + bytes_to_reclaim / 10;*/
+                /*}*/
+                set_string_at(asm_string, "mov %rbp, %rsp\n", *str_i, 15);
+                *str_i += 15;
                 set_string_at(asm_string, "pop %rbp\n", *str_i, 9);
                 *str_i += 9;
 
@@ -168,16 +170,51 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, V
             destroy_string(&expression_code);
 
             uint32_t var_stack_index = 0;
+            uint32_t var_size = 0;
             for (int i = 0; i < variables->length; i++) {
                 if (strncmp(variables->variables[i]->name, input_node->lhs->name, 50) == 0) {
                     var_stack_index = variables->variables[i]->stack_index;
+                    var_size = variables->variables[i]->datatype->size;
                 }
             }
 
             char asm_code[19 + var_stack_index / 10 + 1];
-            sprintf(asm_code, "mov %%rax, -%d(%%rbp)\n", var_stack_index);
+            // FIXME: will have to account for other sizes as well.
+            if (var_size == 8) {
+                sprintf(asm_code, "mov %%rax, -%d(%%rbp)\n", var_stack_index);
+            } else {
+                sprintf(asm_code, "mov %%eax, -%d(%%rbp)\n", var_stack_index);
+            }
             set_string_at(asm_string, asm_code, *str_i, 19 + var_stack_index / 10);
             *str_i += (19 + var_stack_index / 10);
+            }
+            break;
+        case ADDRESS_OF_E: 
+            {
+            for (int i = 0; i < variables->length; i++) {
+                if (strncmp(variables->variables[i]->name, input_node->rhs->name, 50) == 0) {
+                    char asm_code[19 + variables->variables[i]->stack_index / 10 + 1];
+                    sprintf(asm_code, "lea -%d(%%rbp), %%rax\n", variables->variables[i]->stack_index);
+                    set_string_at(asm_string, asm_code, *str_i, 19 + variables->variables[i]->stack_index / 10);
+                    *str_i += 19 + variables->variables[i]->stack_index / 10;
+                }
+            }           
+            }
+            break;
+        case DEREFERENCE_E:
+            // FIXME: Assigning to double dereference doesn't work. parsing is done incorrectly.
+            {
+            String expression_code;
+            initialize_string(&expression_code, 5);
+            uint32_t exp_str_i = 0;
+            unravel_expression(&expression_code, input_node->rhs, &exp_str_i, variables);
+            uint32_t code_len = strnlen(expression_code.string, expression_code.length);
+            set_string_at(asm_string, expression_code.string, *str_i, code_len);
+            *str_i += code_len;
+            destroy_string(&expression_code);
+
+            set_string_at(asm_string, "mov (%rax), %rax\n", *str_i, 17);
+            *str_i += 17;
             }
             break;
         case INTEGER_E:

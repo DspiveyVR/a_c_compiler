@@ -1,15 +1,14 @@
-int square() {
-    int b;
-    b = 4;
-    return b * b;
-}
-
-
 int main() {
     int a;
-    int b;
-    b = 5;
-    a = 4;
-    return a;
+    a = 254;
+    int* b;
+    b = &a;
+    int** f;
+    int c;
+    c = 4;
+    f = &b;
+    int* d;
+    d = *f;
+    return *d;
 }
 
