@@ -107,7 +107,8 @@ void print_ast(Node* node, int indentation) {
             printf("\n");
             printf("%s", indentation_str);
             printf("BLOCK {\n");
-            for (int i = 0; (node->nodes->nodes[i] != NULL) && (i < node->nodes->capacity); i++) {
+
+            for (int i = 0; (i < node->nodes->capacity) && (node->nodes->nodes[i] != NULL); i++) {
                 switch (node->nodes->nodes[i]->type) {
                     case BLOCK:
                         print_ast(node->nodes->nodes[i], indentation + 2);

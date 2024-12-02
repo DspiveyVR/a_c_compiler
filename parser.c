@@ -255,16 +255,23 @@ Node* parse_expression(TokenList* tokens, int* i) {
     Node* expression = create_node();
     Node* focus_node = expression;
     /*
-     When the parser encounters a closing parenthesis, this return address
-     is assigned so that subsequent operators can be compared against the
-     entire parenthetical expression with the assumption that this 
-     parenthetical expression has been fully parsed.
-     If left_paren_return is not NULL  
-     then left_paren_return is reassigned to NULL.
+        When the parser encounters a closing parenthesis, this return address
+        is assigned so that subsequent operators can be compared against the
+        entire parenthetical expression with the assumption that this 
+        parenthetical expression has been fully parsed.
+        If left_paren_return is not NULL  
+        then left_paren_return is reassigned to NULL.
     */
     int return_stack_top = 0;
     // Let's be real you don't need more than this.
     Node* left_paren_return_stack[10] = {NULL};
+    /*
+        This allows multiple unary operators to work.  After the full 
+        sequence of unary operators is parsed, the first one becomes the focus
+        node, so that when a binary operator steals its operand, it will take
+        the entire operand including all of the unary operators.
+    */
+    Node* unary_operator_return = NULL;
     while (*i < tokens->length) { 
         Node current_node;
         current_node.lhs = NULL;
@@ -285,6 +292,11 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 // Integers always have the lowest precedence.
                 focus_node->rhs = create_node();
                 *(focus_node->rhs) = current_node;
+                if (unary_operator_return != NULL) {
+                    focus_node = unary_operator_return;
+                    unary_operator_return = NULL;
+                }
+
                 (*i)++;
                 break;
             case IDENTIFIER:
@@ -305,7 +317,12 @@ Node* parse_expression(TokenList* tokens, int* i) {
                     current_node.nodes = initialize_node_list(5);
                     focus_node->rhs = create_node();
                     *(focus_node->rhs) = current_node;
-                    focus_node = focus_node->rhs;
+                    if (unary_operator_return != NULL) {
+                        focus_node = unary_operator_return;
+                        unary_operator_return = NULL;
+                    } else {
+                        focus_node = focus_node->rhs;
+                    }
                     (*i)++;
                     continue;
                 }
@@ -323,6 +340,11 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 current_node.precedence = 16;
                 focus_node->rhs = create_node();
                 *(focus_node->rhs) = current_node;
+                if (unary_operator_return != NULL) {
+                    focus_node = unary_operator_return;
+                    unary_operator_return = NULL;
+                } 
+
                 (*i)++;
                 break;
             case PLUS:
@@ -376,6 +398,9 @@ Node* parse_expression(TokenList* tokens, int* i) {
                     if (expression->type == NONETYPE) {
                         expression->type = DEREFERENCE_E;
                         expression->precedence = 2;
+                        if (unary_operator_return == NULL) {
+                            unary_operator_return = expression;
+                        }
                         (*i)++;
                         continue;
                     }
@@ -383,6 +408,9 @@ Node* parse_expression(TokenList* tokens, int* i) {
                     current_node.precedence = 2;
                     focus_node->rhs = create_node();
                     *(focus_node->rhs) = current_node;
+                    if (unary_operator_return == NULL) {
+                        unary_operator_return = focus_node;
+                    }
                     focus_node = focus_node->rhs;
                 }
                 (*i)++;
@@ -476,12 +504,14 @@ Node* parse_expression(TokenList* tokens, int* i) {
                 current_node.type = CLOSE_PARENTHESIS_E;
                 current_node.precedence = 0;
                 // Checks how many layers deep the parentheses are.
-                Node** closeptr = &(focus_node->rhs->rhs);
-                while (*closeptr != NULL) {
-                    closeptr = &((**closeptr).rhs);
+                if (tokens->tokens[*i - 1]->type != LEFT_PARENTHESIS) {
+                    Node** closeptr = &(focus_node->rhs->rhs);
+                    while (*closeptr != NULL) {
+                        closeptr = &((**closeptr).rhs);
+                    }
+                    *closeptr = create_node();
+                    **closeptr = current_node;
                 }
-                *closeptr = create_node();
-                **closeptr = current_node;
                 return_stack_top--;
                 focus_node = left_paren_return_stack[return_stack_top];
                 (*i)++;
@@ -578,7 +608,7 @@ NodeList* initialize_node_list(int capacity) {
 }
 
 void destroy_node_list(NodeList* array) {
-    for (int i = 0; (array->nodes[i] != NULL) && (i < array->capacity); i++) {
+    for (int i = 0; (i < array->capacity) && (array->nodes[i] != NULL); i++) {
         destroy_node(array->nodes[i]);
     }
     free(array->nodes);
