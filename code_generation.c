@@ -24,7 +24,6 @@ typedef struct VariableList {
 void unravel_block(String* asm_string, Node* input_node, 
                    uint32_t* str_i, uint8_t scope_level, 
                    uint32_t stack_top, VariableList* variables);
-void check_used_registers(String* function_body_code, _Bool* is_used_table);
 void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, VariableList* variables);
 VariableList* initialize_variable_list(int capacity);
 void destroy_variable_list(VariableList* array);
@@ -41,8 +40,6 @@ void generate_assembly(String* asm_string, Node* ast) {
 void unravel_block(String* asm_string, Node* input_node, 
                    uint32_t* str_i, uint8_t scope_level, 
                    uint32_t stack_top, VariableList* variables) {
-    String* saved_asm_string = NULL;
-    uint32_t saved_str_i = 0;
     for (int i = 0; i < input_node->nodes->capacity && input_node->nodes->nodes[i] != NULL; i++) {
         switch (input_node->nodes->nodes[i]->type) {
             case VARIABLE_DECLARATION_S:
@@ -77,13 +74,6 @@ void unravel_block(String* asm_string, Node* input_node,
                 *str_i += 10;
                 set_string_at(asm_string, "mov %rsp, %rbp\n", *str_i, 15);
                 *str_i += 15;
-
-                saved_asm_string = asm_string;
-                saved_str_i = *str_i;
-                String function_body_string;
-                initialize_string(&function_body_string, 5);
-                asm_string = &function_body_string;
-                *str_i = 0;
                 }
                 break;
             case RETURN_S:
@@ -92,51 +82,6 @@ void unravel_block(String* asm_string, Node* input_node,
                 if (input_node->nodes->nodes[i]->rhs != NULL) {
                     unravel_expression(asm_string, input_node->nodes->nodes[i]->rhs, str_i, variables);
                 }
-
-                // determine what registers are used, then save them.
-                // you might could use this logic to omit the sub rsp if
-                // the allocated memory lies within the red zone and otherwise
-                // to allocate memory only once.
-                _Bool is_used_table[14] = {false};
-                check_used_registers(asm_string, is_used_table);
-                String* function_body_string = asm_string;
-                asm_string = saved_asm_string;
-                *str_i = saved_str_i;
-                saved_asm_string = NULL;
-                saved_str_i = 0;
-
-                if (is_used_table[1] == true) {
-                    set_string_at(asm_string, "push %rbx\n", *str_i, 10);
-                    *str_i += 10;
-                } 
-                for (size_t i = 10; i < sizeof(is_used_table); i++) {
-                    if (is_used_table[i] == true) {
-                        char asm_code[11];
-                        sprintf(asm_code, "push %%r%d\n", (uint32_t)i + 2);
-                        set_string_at(asm_string, asm_code, *str_i, 10);
-                        *str_i += 10;
-                    }
-                }
-
-                uint32_t code_len = strnlen(function_body_string->string, function_body_string->length);
-                set_string_at(asm_string, function_body_string->string, *str_i, code_len);
-                *str_i += code_len;
-                destroy_string(function_body_string);
-
-                // Pop in reverse order.
-                for (size_t i = sizeof(is_used_table) - 1; i >= 10; i--) {
-                    if (is_used_table[i] == true) {
-                        char asm_code[10];
-                        sprintf(asm_code, "pop %%r%d\n", (uint32_t)i + 2);
-                        set_string_at(asm_string, asm_code, *str_i, 9);
-                        *str_i += 9;
-                    }
-                }
-                if (is_used_table[1] == true) {
-                    set_string_at(asm_string, "pop %rbx\n", *str_i, 9);
-                    *str_i += 9;
-                } 
-
 
                 set_string_at(asm_string, "mov %rbp, %rsp\n", *str_i, 15);
                 *str_i += 15;
@@ -167,86 +112,10 @@ void unravel_block(String* asm_string, Node* input_node,
     return;
 }
 
-void check_used_registers(String* function_body_code, _Bool* is_used_table) {
-    char register_names[6][3] = {"rax", "rbx", "rcx", "rdx", "rsi", "rdi"};
-    // There are 13 regs other than rsp and rbp.
-    for (size_t reg_i = 0; reg_i < 14; reg_i++) {
-        for (size_t str_i = 0; str_i < function_body_code->length; str_i++) {
-            if (reg_i < 6) {
-                // TODO: Test what happens if the register name is at the exact 
-                // end of this string.
-                if (str_i < function_body_code->length - 3) {
-                    // FIXME: you may want to account for the smaller registers 
-                    // such as eax.  If eax is used, that means rax is used.
-                    if (strncmp(register_names[reg_i], function_body_code->string + str_i, 3) == 0) {
-                        is_used_table[reg_i] = true;
-                        break;
-                    }
-                }
-            } else {
-                char reg_name[4] = "";
-                sprintf(reg_name, "r%d", (int)reg_i + 2);
-                if (str_i < function_body_code->length - strnlen(reg_name, 3)) {
-                    if (strncmp(reg_name, function_body_code->string + str_i, strnlen(reg_name, 3)) == 0) {
-                        is_used_table[reg_i] = true;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-}
-
 void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, VariableList* variables) {
     switch (input_node->type) {
         case FUNCTION_CALL_E:
-            // TODO
-            /*
-                Save caller saved registers using same algorithm as above.
-                Probably should also sub rsp with some padding to ensure that
-                rsp offset is divisible by 16.
-            */
             {
-            _Bool is_used_table[14] = {false};
-            check_used_registers(asm_string, is_used_table);
-
-            if (is_used_table[0] == true) {
-                set_string_at(asm_string, "push %rax\n", *str_i, 10);
-                *str_i += 10;
-            } 
-            if (is_used_table[2] == true) {
-                set_string_at(asm_string, "push %rcx\n", *str_i, 10);
-                *str_i += 10;
-            } 
-            if (is_used_table[3] == true) {
-                set_string_at(asm_string, "push %rdx\n", *str_i, 10);
-                *str_i += 10;
-            } 
-            if (is_used_table[4] == true) {
-                set_string_at(asm_string, "push %rsi\n", *str_i, 10);
-                *str_i += 10;
-            } 
-            if (is_used_table[5] == true) {
-                set_string_at(asm_string, "push %rdi\n", *str_i, 10);
-                *str_i += 10;
-            }
-            if (is_used_table[6] == true) {
-                set_string_at(asm_string, "push %r8\n", *str_i, 9);
-                *str_i += 9;
-            }
-            if (is_used_table[7] == true) {
-                set_string_at(asm_string, "push %r9\n", *str_i, 9);
-                *str_i += 9;
-            }
-            if (is_used_table[8] == true) {
-                set_string_at(asm_string, "push %r10\n", *str_i, 10);
-                *str_i += 10;
-            }
-            if (is_used_table[9] == true) {
-                set_string_at(asm_string, "push %r11\n", *str_i, 10);
-                *str_i += 10;
-            }
-
             /*
                 TODO:
                 Make a FunctionList like VariableList, where you can see the 
@@ -258,43 +127,6 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, V
             sprintf(asm_code, "call %s\n", input_node->name);
             set_string_at(asm_string, asm_code, *str_i, 6 + strnlen(input_node->name, 50));
             *str_i += 6 + strnlen(input_node->name, 50);
-
-            if (is_used_table[9] == true) {
-                set_string_at(asm_string, "pop %r11\n", *str_i, 9);
-                *str_i += 9;
-            }
-            if (is_used_table[8] == true) {
-                set_string_at(asm_string, "pop %r10\n", *str_i, 9);
-                *str_i += 9;
-            }
-            if (is_used_table[7] == true) {
-                set_string_at(asm_string, "pop %r9\n", *str_i, 8);
-                *str_i += 8;
-            }
-            if (is_used_table[6] == true) {
-                set_string_at(asm_string, "pop %r8\n", *str_i, 8);
-                *str_i += 8;
-            }
-            if (is_used_table[5] == true) {
-                set_string_at(asm_string, "pop %rdi\n", *str_i, 9);
-                *str_i += 9;
-            }
-            if (is_used_table[4] == true) {
-                set_string_at(asm_string, "pop %rsi\n", *str_i, 9);
-                *str_i += 9;
-            } 
-            if (is_used_table[3] == true) {
-                set_string_at(asm_string, "pop %rdx\n", *str_i, 9);
-                *str_i += 9;
-            } 
-            if (is_used_table[2] == true) {
-                set_string_at(asm_string, "pop %rcx\n", *str_i, 9);
-                *str_i += 9;
-            } 
-            if (is_used_table[0] == true) {
-                set_string_at(asm_string, "pop %rax\n", *str_i, 9);
-                *str_i += 9;
-            } 
 
             }
             break;
@@ -339,8 +171,8 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, V
                 } else {
                     sprintf(asm_code, "mov %%eax, -%d(%%rbp)\n", var_stack_index);
                 }
-                set_string_at(asm_string, asm_code, *str_i, 20 + var_stack_index / 10);
-                *str_i += (20 + var_stack_index / 10);
+                set_string_at(asm_string, asm_code, *str_i, 19 + var_stack_index / 10);
+                *str_i += (19 + var_stack_index / 10);
             } else {
                 char asm_code[19 + var_stack_index / 10 + 1];
                 sprintf(asm_code, "mov -%d(%%rbp), %%rcx\n", var_stack_index);
