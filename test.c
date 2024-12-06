@@ -1,10 +1,11 @@
-int square() {
-    return 4 * 4;
+int square(int a) {
+    return a * a;
 }
 
 int main() {
     int a;
-    a = square() * 5;
+    a = 3;
+    a = square(a) * 5;
     int* b;
     b = &a;
     return *b;

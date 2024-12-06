@@ -12,7 +12,6 @@ typedef struct Variable {
     TypeNode* datatype;
     uint8_t scope_level;
     uint32_t stack_index;
-    char* register_name;
 } Variable;
 
 typedef struct VariableList {
@@ -21,25 +20,47 @@ typedef struct VariableList {
     uint32_t capacity;
 } VariableList;
 
+typedef struct FunctionHeader {
+    char* name;
+    TypeNode* return_type;
+    NodeList* parameters;
+} FunctionHeader;
+
+typedef struct FunctionList { 
+    FunctionHeader** functions;
+    uint32_t length;
+    uint32_t capacity;
+} FunctionList;
+
 void unravel_block(String* asm_string, Node* input_node, 
                    uint32_t* str_i, uint8_t scope_level, 
-                   uint32_t stack_top, VariableList* variables);
-void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, VariableList* variables);
+                   uint32_t stack_top, VariableList* variables, 
+                   FunctionList* functions);
+void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, 
+                        VariableList* variables, FunctionList* functions);
 VariableList* initialize_variable_list(int capacity);
 void destroy_variable_list(VariableList* array);
 void push_var(VariableList* array, Variable* var);
 void pop_var(VariableList* array);
+FunctionList* initialize_function_list(int capacity);
+void destroy_function_list(FunctionList* array);
+void push_func(FunctionList* array, FunctionHeader* function);
+void pop_func(FunctionList* array);
+void increase_function_list_capacity(FunctionList* array, int new_capacity);
 
 void generate_assembly(String* asm_string, Node* ast) {
     uint32_t str_i = 0;
     VariableList* variables = initialize_variable_list(5);
-    unravel_block(asm_string, ast, &str_i, 0, 0, variables);
+    FunctionList* functions = initialize_function_list(5);
+    unravel_block(asm_string, ast, &str_i, 0, 0, variables, functions);
     destroy_variable_list(variables); 
+    destroy_function_list(functions);
 }
 
 void unravel_block(String* asm_string, Node* input_node, 
                    uint32_t* str_i, uint8_t scope_level, 
-                   uint32_t stack_top, VariableList* variables) {
+                   uint32_t stack_top, VariableList* variables, 
+                   FunctionList* functions) {
     for (int i = 0; i < input_node->nodes->capacity && input_node->nodes->nodes[i] != NULL; i++) {
         switch (input_node->nodes->nodes[i]->type) {
             case VARIABLE_DECLARATION_S:
@@ -58,10 +79,17 @@ void unravel_block(String* asm_string, Node* input_node,
                 }
                 break;
             case BLOCK:
-                unravel_block(asm_string, input_node->nodes->nodes[i], str_i, scope_level + 1, stack_top, variables);
+                unravel_block(asm_string, input_node->nodes->nodes[i], str_i, 
+                              scope_level + 1, stack_top, variables, functions);
                 break;
             case FUNCTION_DEFINITION_H: 
                 {
+                FunctionHeader* new_function = malloc(sizeof(FunctionHeader));
+                new_function->name = input_node->nodes->nodes[i]->name;
+                new_function->return_type = input_node->nodes->nodes[i]->datatype;
+                new_function->parameters = input_node->nodes->nodes[i]->nodes;
+                push_func(functions, new_function);
+
                 if (strncmp(input_node->nodes->nodes[i]->name, "main", 50) == 0) {
                     set_string_at(asm_string, "\t.globl main\n", *str_i, 13);
                     *str_i += 13;
@@ -74,13 +102,55 @@ void unravel_block(String* asm_string, Node* input_node,
                 *str_i += 10;
                 set_string_at(asm_string, "mov %rsp, %rbp\n", *str_i, 15);
                 *str_i += 15;
+
+                // Creating local variables from arguments passed to the function.
+                if (new_function->parameters == NULL) {
+                    break;
+                }
+                // Finding the length of the nodelist because you're stupid
+                // and didn't create a length field initially.
+                uint8_t param_count = 0;
+                NodeList* parameters = new_function->parameters;
+                for (size_t j = 0; (j < parameters->capacity) && 
+                    (parameters->nodes[j] != NULL); j++) {
+                    param_count++;
+                }
+
+                char regs[6][3] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+                for (size_t j = param_count; j > 0; j--) {
+                    Variable* new_var = malloc(sizeof(Variable));
+                    new_var->name = input_node->nodes->nodes[i]->name;
+                    new_var->datatype = input_node->nodes->nodes[i]->datatype;
+                    new_var->scope_level = scope_level;
+                    push_var(variables, new_var);
+
+                    if (param_count > 6) {
+                        // FIXME: var references need to account for the negative stack index.
+                        new_var->stack_index = -((param_count - 6) * 8);
+                    } else {
+                        // Declare variable.
+                        char asm_code[13 + new_var->datatype->size / 10 + 1];
+                        sprintf(asm_code, "sub $%d, %%rsp\n", new_var->datatype->size);
+                        stack_top += new_var->datatype->size;
+                        new_var->stack_index = stack_top;
+                        set_string_at(asm_string, asm_code, *str_i, 13 + new_var->datatype->size / 10);
+                        *str_i += 13 + new_var->datatype->size / 10;
+
+                        // Assign variable.
+                        char asm_code2[15 + strnlen(regs[j - 1], 3) + (new_var->stack_index / 10) + 1];
+                        sprintf(asm_code2, "mov %%%s, -%d(%%rbp)\n", regs[j - 1], new_var->stack_index);
+                        set_string_at(asm_string, asm_code2, *str_i, 15 + strnlen(regs[j - 1], 3) + (new_var->stack_index / 10));
+                        *str_i = 15 + strnlen(regs[j - 1], 3) + (new_var->stack_index / 10);
+                    }
+                }
                 }
                 break;
             case RETURN_S:
                 {
                 // Generates the code for the expression being returned.
                 if (input_node->nodes->nodes[i]->rhs != NULL) {
-                    unravel_expression(asm_string, input_node->nodes->nodes[i]->rhs, str_i, variables);
+                    unravel_expression(asm_string, input_node->nodes->nodes[i]->rhs, 
+                                       str_i, variables, functions);
                 }
 
                 set_string_at(asm_string, "mov %rbp, %rsp\n", *str_i, 15);
@@ -92,7 +162,8 @@ void unravel_block(String* asm_string, Node* input_node,
                 }
                 return;
             default:
-                unravel_expression(asm_string, input_node->nodes->nodes[i], str_i, variables);
+                unravel_expression(asm_string, input_node->nodes->nodes[i], 
+                                   str_i, variables, functions);
                 break;
         }
     }
@@ -112,17 +183,41 @@ void unravel_block(String* asm_string, Node* input_node,
     return;
 }
 
-void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, VariableList* variables) {
+void unravel_expression(String* asm_string, Node* input_node, 
+                        uint32_t* str_i, VariableList* variables,
+                        FunctionList* functions) {
     switch (input_node->type) {
         case FUNCTION_CALL_E:
             {
-            /*
-                TODO:
-                Make a FunctionList like VariableList, where you can see the 
-                declared functions in a list and view their parameters so then
-                you can figure out how to actually pass arguments to the 
-                function.
-             */
+            /*for (size_t i = 0; i < functions->length; i++) {*/
+            /*    if (strncmp(functions->functions[i]->name, input_node->name, 50) == 0) {*/
+                    // Finding the length of the nodelist because you're stupid
+                    // and didn't create a length field initially.
+                    uint8_t arg_count = 0;
+                    NodeList* args = input_node->nodes;
+                    for (size_t j = 0; (j < args->capacity) && 
+                        (args->nodes[j] != NULL); j++) {
+                        arg_count++;
+                    }
+
+                    char regs[6][3] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+                    for (size_t j = arg_count; j > 0; j--) {
+                        if (arg_count > 6) {
+                            unravel_expression(asm_string, args->nodes[j - 1]->rhs, str_i, 
+                                               variables, functions);
+                            set_string_at(asm_string, "push %rax", *str_i, 9);
+                            *str_i += 9;
+                        } else {
+                            unravel_expression(asm_string, args->nodes[j - 1]->rhs, str_i, 
+                                               variables, functions);
+                            char asm_code[11 + strnlen(regs[j - 1], 3) + 1];
+                            sprintf(asm_code, "mov %%rax, %%%s", regs[j - 1]);
+                            set_string_at(asm_string, asm_code, *str_i, 11 + strnlen(regs[j - 1], 3));
+                            *str_i = 11 + strnlen(regs[j - 1], 3);
+                        }
+                /*    }*/
+                /*}*/
+            }
             char asm_code[6 + strnlen(input_node->name, 50) + 1];
             sprintf(asm_code, "call %s\n", input_node->name);
             set_string_at(asm_string, asm_code, *str_i, 6 + strnlen(input_node->name, 50));
@@ -146,7 +241,8 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, V
             break;
         case ASSIGNMENT_E:
             {
-            unravel_expression(asm_string, input_node->rhs, str_i, variables);
+            unravel_expression(asm_string, input_node->rhs, str_i, 
+                               variables, functions);
 
             uint32_t derefs = 0;
             Node* lhs_var = input_node->lhs;
@@ -202,7 +298,8 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, V
             break;
         case DEREFERENCE_E:
             {
-            unravel_expression(asm_string, input_node->rhs, str_i, variables);
+            unravel_expression(asm_string, input_node->rhs, str_i, 
+                               variables, functions);
 
             set_string_at(asm_string, "mov (%rax), %rax\n", *str_i, 17);
             *str_i += 17;
@@ -218,12 +315,14 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, V
             break;
         case ADDITION_E:
             {
-            unravel_expression(asm_string, input_node->lhs, str_i, variables);
+            unravel_expression(asm_string, input_node->lhs, str_i, 
+                               variables, functions);
             char asm_code[11];
             sprintf(asm_code, "push %%rax\n");
             set_string_at(asm_string, asm_code, *str_i, 10);
             *str_i += 10;
-            unravel_expression(asm_string, input_node->rhs, str_i, variables);
+            unravel_expression(asm_string, input_node->rhs, str_i, 
+                               variables, functions);
             char asm_code2[10];
             sprintf(asm_code2, "pop %%rcx\n");
             char asm_code3[16];
@@ -236,12 +335,14 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, V
             break;
         case MULTIPLICATION_E:
             {
-            unravel_expression(asm_string, input_node->lhs, str_i, variables);
+            unravel_expression(asm_string, input_node->lhs, str_i, 
+                               variables, functions);
             char asm_code[11];
             sprintf(asm_code, "push %%rax\n");
             set_string_at(asm_string, asm_code, *str_i, 10);
             *str_i += 10;
-            unravel_expression(asm_string, input_node->rhs, str_i, variables);
+            unravel_expression(asm_string, input_node->rhs, str_i, 
+                               variables, functions);
             char asm_code2[10];
             sprintf(asm_code2, "pop %%rcx\n");
             char asm_code3[17];
@@ -253,7 +354,8 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, V
             }
             break;
         case OPEN_PARENTHESIS_E:
-            unravel_expression(asm_string, input_node->rhs, str_i, variables);
+            unravel_expression(asm_string, input_node->rhs, str_i, 
+                               variables, functions);
             break;
         case CLOSE_PARENTHESIS_E:
         case NONETYPE:
@@ -262,6 +364,41 @@ void unravel_expression(String* asm_string, Node* input_node, uint32_t* str_i, V
     }
 
     return;
+}
+
+FunctionList* initialize_function_list(int capacity) {
+    FunctionList* array = malloc(sizeof(FunctionList));
+    array->functions = malloc(sizeof(FunctionHeader*) * capacity);
+    array->length = 0;
+    array->capacity = capacity;
+
+    for (int i = 0; i < capacity; i++) {
+        array->functions[i] = NULL;
+    }
+
+    return array;
+}
+
+void destroy_function_list(FunctionList* array) {
+    for (size_t i = 0; i < array->capacity; i++) {
+        free(array->functions[i]);
+    }
+
+    free(array->functions);
+    free(array);
+}
+
+void push_func(FunctionList* array, FunctionHeader* function) {
+    array->functions[array->length] = function;
+    (array->length)++;
+}
+
+void increase_function_list_capacity(FunctionList* array, int new_capacity) {
+    array->functions = realloc((void*)(array->functions), new_capacity * sizeof(FunctionHeader*));
+    for (int i = array->capacity; i < new_capacity; i++) {
+        array->functions[i] = NULL;
+    }
+    array->capacity = new_capacity;
 }
 
 VariableList* initialize_variable_list(int capacity) {

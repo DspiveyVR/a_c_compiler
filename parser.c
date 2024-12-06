@@ -121,6 +121,7 @@ Node* parse_block(TokenList* tokens, int* i) {
                     header->type = IF_H;
                     (*i)++;
                     header->rhs = parse_expression(tokens, i);
+                // TODO: should also include other type keywords.
                 } else if (strncmp(tokens->tokens[*i]->value, "int", 3) == 0) {
                     header = create_node();
                     header->type = FUNCTION_DEFINITION_H;
