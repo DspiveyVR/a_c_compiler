@@ -50,10 +50,11 @@ void increase_function_list_capacity(FunctionList* array, int new_capacity);
 
 void generate_assembly(String* asm_string, Node* ast) {
     uint32_t str_i = 0;
-    VariableList* variables = initialize_variable_list(5);
+    // TODO: can handle globals later.
+    /*VariableList* variables = initialize_variable_list(5);*/
     FunctionList* functions = initialize_function_list(5);
-    unravel_block(asm_string, ast, &str_i, 0, 0, variables, functions);
-    destroy_variable_list(variables); 
+    unravel_block(asm_string, ast, &str_i, 0, 0, NULL, functions);
+    /*destroy_variable_list(variables); */
     destroy_function_list(functions);
 }
 
@@ -89,6 +90,8 @@ void unravel_block(String* asm_string, Node* input_node,
                 new_function->return_type = input_node->nodes->nodes[i]->datatype;
                 new_function->parameters = input_node->nodes->nodes[i]->nodes;
                 push_func(functions, new_function);
+                // Each function should have its own variable list.
+                variables = initialize_variable_list(5);
 
                 if (strncmp(input_node->nodes->nodes[i]->name, "main", 50) == 0) {
                     set_string_at(asm_string, "\t.globl main\n", *str_i, 13);
@@ -116,11 +119,11 @@ void unravel_block(String* asm_string, Node* input_node,
                     param_count++;
                 }
 
-                char regs[6][3] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-                for (size_t j = param_count; j > 0; j--) {
+                char regs[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+                for (int j = param_count - 1; j >= 0; j--) {
                     Variable* new_var = malloc(sizeof(Variable));
-                    new_var->name = input_node->nodes->nodes[i]->name;
-                    new_var->datatype = input_node->nodes->nodes[i]->datatype;
+                    new_var->name = parameters->nodes[j]->name;
+                    new_var->datatype = parameters->nodes[j]->datatype;
                     new_var->scope_level = scope_level;
                     push_var(variables, new_var);
 
@@ -137,10 +140,16 @@ void unravel_block(String* asm_string, Node* input_node,
                         *str_i += 13 + new_var->datatype->size / 10;
 
                         // Assign variable.
-                        char asm_code2[15 + strnlen(regs[j - 1], 3) + (new_var->stack_index / 10) + 1];
-                        sprintf(asm_code2, "mov %%%s, -%d(%%rbp)\n", regs[j - 1], new_var->stack_index);
-                        set_string_at(asm_string, asm_code2, *str_i, 15 + strnlen(regs[j - 1], 3) + (new_var->stack_index / 10));
-                        *str_i = 15 + strnlen(regs[j - 1], 3) + (new_var->stack_index / 10);
+                        char* reg_name = regs[j];
+                        // FIXME: will have to account for other sizes as well.
+                        if (new_var->datatype->size == 4) {
+                            reg_name[0] = 'e';
+                        }
+
+                        char asm_code2[16 + strnlen(regs[j - 1], 3) + (new_var->stack_index / 10) + 1];
+                        sprintf(asm_code2, "mov %%%s, -%d(%%rbp)\n", regs[j], new_var->stack_index);
+                        set_string_at(asm_string, asm_code2, *str_i, 16 + strnlen(regs[j], 3) + (new_var->stack_index / 10));
+                        *str_i += 16 + strnlen(regs[j], 3) + (new_var->stack_index / 10);
                     }
                 }
                 }
@@ -152,6 +161,7 @@ void unravel_block(String* asm_string, Node* input_node,
                     unravel_expression(asm_string, input_node->nodes->nodes[i]->rhs, 
                                        str_i, variables, functions);
                 }
+                destroy_variable_list(variables);
 
                 set_string_at(asm_string, "mov %rbp, %rsp\n", *str_i, 15);
                 *str_i += 15;
@@ -167,17 +177,19 @@ void unravel_block(String* asm_string, Node* input_node,
                 break;
         }
     }
-    uint32_t bytes_to_reclaim = 0;
-    for (int i = variables->length - 1; 
-            i >= 0 && variables->variables[i] != NULL && variables->variables[i]->scope_level == scope_level; i--) {
-        bytes_to_reclaim += variables->variables[i]->datatype->size;
-        pop_var(variables);
-    }
-    if (bytes_to_reclaim > 0) {
-        char asm_code[13 + bytes_to_reclaim / 10 + 1];
-        sprintf(asm_code, "add $%d, %%rsp\n", bytes_to_reclaim);
-        set_string_at(asm_string, asm_code, *str_i, 13 + bytes_to_reclaim / 10);
-        *str_i += 13 + bytes_to_reclaim / 10;
+    if (variables != NULL) {
+        uint32_t bytes_to_reclaim = 0;
+        for (int i = variables->length - 1; 
+                i >= 0 && variables->variables[i] != NULL && variables->variables[i]->scope_level == scope_level; i--) {
+            bytes_to_reclaim += variables->variables[i]->datatype->size;
+            pop_var(variables);
+        }
+        if (bytes_to_reclaim > 0) {
+            char asm_code[13 + bytes_to_reclaim / 10 + 1];
+            sprintf(asm_code, "add $%d, %%rsp\n", bytes_to_reclaim);
+            set_string_at(asm_string, asm_code, *str_i, 13 + bytes_to_reclaim / 10);
+            *str_i += 13 + bytes_to_reclaim / 10;
+        }
     }
 
     return;
@@ -200,7 +212,7 @@ void unravel_expression(String* asm_string, Node* input_node,
                         arg_count++;
                     }
 
-                    char regs[6][3] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+                    char regs[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
                     for (size_t j = arg_count; j > 0; j--) {
                         if (arg_count > 6) {
                             unravel_expression(asm_string, args->nodes[j - 1]->rhs, str_i, 
@@ -210,10 +222,10 @@ void unravel_expression(String* asm_string, Node* input_node,
                         } else {
                             unravel_expression(asm_string, args->nodes[j - 1]->rhs, str_i, 
                                                variables, functions);
-                            char asm_code[11 + strnlen(regs[j - 1], 3) + 1];
-                            sprintf(asm_code, "mov %%rax, %%%s", regs[j - 1]);
-                            set_string_at(asm_string, asm_code, *str_i, 11 + strnlen(regs[j - 1], 3));
-                            *str_i = 11 + strnlen(regs[j - 1], 3);
+                            char asm_code[12 + strnlen(regs[j - 1], 3) + 1];
+                            sprintf(asm_code, "mov %%rax, %%%s\n", regs[j - 1]);
+                            set_string_at(asm_string, asm_code, *str_i, 12 + strnlen(regs[j - 1], 3));
+                            *str_i += 12 + strnlen(regs[j - 1], 3);
                         }
                 /*    }*/
                 /*}*/
@@ -292,6 +304,7 @@ void unravel_expression(String* asm_string, Node* input_node,
                     sprintf(asm_code, "lea -%d(%%rbp), %%rax\n", variables->variables[i]->stack_index);
                     set_string_at(asm_string, asm_code, *str_i, 19 + variables->variables[i]->stack_index / 10);
                     *str_i += 19 + variables->variables[i]->stack_index / 10;
+                    break;
                 }
             }           
             }
