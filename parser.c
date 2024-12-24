@@ -78,15 +78,15 @@ Node* parse_block(TokenList* tokens, int* i) {
     Node* block = create_node();
     Node* header = NULL;
     block->type = BLOCK;
+    int node_index = 0;
+    block->nodes = initialize_node_list(5);
 
     while (*i < tokens->length) { 
         switch (tokens->tokens[*i]->type) {
             case LEFT_BRACKET:
                 {
-                block->nodes = initialize_node_list(5);
-                int node_index = 0;
                 if (header != NULL)  {
-                    block->nodes->nodes[0] = header;
+                    block->nodes->nodes[node_index] = header;
                     node_index++;
                 }
 
@@ -141,6 +141,16 @@ Node* parse_block(TokenList* tokens, int* i) {
                         }
                     }
                     (*i)++;
+                    if (tokens->tokens[*i]->type == SEMICOLON) {
+                        header->type = FUNCTION_DECLARATION_H;
+                        (*i)++;
+
+                        if (node_index >= block->nodes->capacity) {
+                            increase_node_list_capacity(block->nodes, block->nodes->capacity + 5);
+                        }
+                        block->nodes->nodes[node_index] = header;
+                        node_index++;
+                    }
                 }
                 }
                 break;

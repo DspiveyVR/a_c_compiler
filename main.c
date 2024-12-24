@@ -56,17 +56,18 @@ int main(int argc, char** argv) {
     }
 
     int token_index = 0;
-    Node* ast = create_node();
-    ast->type = BLOCK;
-    ast->nodes = initialize_node_list(5);
-    int node_index = 0;
-    while (token_index < tokens.length && tokens.tokens[token_index]->type != NONE) {
-        if (node_index >= ast->nodes->capacity) {
-            increase_node_list_capacity(ast->nodes, ast->nodes->capacity + 5);
-        }
-        ast->nodes->nodes[node_index] = parse_block(&tokens, &token_index);
-        node_index++;
-    }
+    /*Node* ast = create_node();*/
+    Node* ast = parse_block(&tokens, &token_index);
+    /*ast->type = BLOCK;*/
+    /*ast->nodes = initialize_node_list(5);*/
+    /*int node_index = 0;*/
+    /*while (token_index < tokens.length && tokens.tokens[token_index]->type != NONE) {*/
+    /*    if (node_index >= ast->nodes->capacity) {*/
+    /*        increase_node_list_capacity(ast->nodes, ast->nodes->capacity + 5);*/
+    /*    }*/
+    /*    ast->nodes->nodes[node_index] = parse_block(&tokens, &token_index);*/
+    /*    node_index++;*/
+    /*}*/
     /*Node* block = parse_block(&tokens, &token_index);*/
     printf("\n");
     bg_magenta();
@@ -79,7 +80,7 @@ int main(int argc, char** argv) {
 
     String asm_text;
     initialize_string(&asm_text, 100);
-    generate_assembly(&asm_text, ast);
+    /*generate_assembly(&asm_text, ast);*/
     destroy_node(ast);
     printf("%s", asm_text.string);
     FILE* asm_file;
@@ -137,6 +138,25 @@ void print_ast(Node* node, int indentation) {
         case FUNCTION_DEFINITION_H:
             clear();
             printf("FUNCTION_DEFINITION_H(");
+            // FIXME: more datatypes later.
+            printf("(");
+            print_datatype(node->datatype);
+            printf(", \"%s\")", node->name);
+            if (node->nodes != NULL) {
+                printf(", ");
+                for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
+                    print_ast(node->nodes->nodes[i], indentation);
+                    if (node->nodes->nodes[i + 1] != NULL) {
+                        printf(", ");
+                    }
+                }
+            }
+            clear();
+            printf(")");
+            break;
+        case FUNCTION_DECLARATION_H:
+            clear();
+            printf("FUNCTION_DECLARATION_H(");
             // FIXME: more datatypes later.
             printf("(");
             print_datatype(node->datatype);
