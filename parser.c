@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include "lexer.h"
 #include <stdio.h>
+#include "lexer.h"
+#include "colors.h"
 
 typedef enum NodeType {
     NONETYPE,
@@ -62,8 +63,10 @@ typedef struct Node {
     NodeType type;
     TypeNode* datatype;
     uint8_t precedence;
+
 } Node;
 
+typedef Node* 💀;
 Node* create_node();
 void destroy_node(Node* node);
 Node* parse_expression(TokenList* tokens, int* i);
@@ -73,98 +76,311 @@ Node* parse_statement(TokenList* tokens, int* i);
 NodeList* initialize_node_list(int capacity);
 void destroy_node_list(NodeList* array);
 void increase_node_list_capacity(NodeList* array, int new_capacity);
+💀 parse_block(TokenList* tokens, int* i, 💀 header);
+Node* parse_control_flow_header(TokenList* tokens, int* i);
+Node* parse_function_header(TokenList* tokens, int* i);
 
-Node* parse_block(TokenList* tokens, int* i) {
-    Node* block = create_node();
-    Node* header = NULL;
-    block->type = BLOCK;
-    int node_index = 0;
-    block->nodes = initialize_node_list(5);
+Node* parse(TokenList* tokens, int* i) {
+    Node* root_block = create_node();
+    root_block->type = BLOCK;
+    int block_i = 0;
+    // FIXME: Make resizable.
+    root_block->nodes = initialize_node_list(10);
+    Node* held_header = NULL;
 
     while (*i < tokens->length) { 
         switch (tokens->tokens[*i]->type) {
-            case LEFT_BRACKET:
-                {
-                if (header != NULL)  {
-                    block->nodes->nodes[node_index] = header;
-                    node_index++;
-                }
-
-                (*i)++;
-                while (tokens->tokens[*i]->type != RIGHT_BRACKET) {
-                    if (node_index >= block->nodes->capacity) {
-                        increase_node_list_capacity(block->nodes, block->nodes->capacity + 5);
+            case KEYWORD:
+                if (!strncmp(tokens->tokens[*i]->value, "int", 3)) {
+                    held_header = parse_function_header(tokens, i);
+                    if (held_header->type == FUNCTION_DECLARATION_H) {
+                        root_block->nodes->nodes[block_i] = held_header;
+                        held_header = NULL;
+                        block_i++;
                     }
-
-                    switch (tokens->tokens[*i]->type) {
-                        case KEYWORD:
-                            if (strncmp(tokens->tokens[*i]->value, "if", 2) == 0) {
-                            } else {
-                                block->nodes->nodes[node_index] = parse_statement(tokens, i);
-                                break;
-                            }
-                        case LEFT_BRACKET:
-                            block->nodes->nodes[node_index] = parse_block(tokens, i);
-                            break;
-                        default:
-                            block->nodes->nodes[node_index] = parse_statement(tokens, i);
-                            break;
-                    }
-                    node_index++;
-                }
                 }
                 break;
-            case KEYWORD:
-                {
-                if (strncmp(tokens->tokens[*i]->value, "if", 2) == 0) {
-                    header = create_node();
-                    header->type = IF_H;
-                    (*i)++;
-                    header->rhs = parse_expression(tokens, i);
-                // TODO: should also include other type keywords.
-                } else if (strncmp(tokens->tokens[*i]->value, "int", 3) == 0) {
-                    header = create_node();
-                    header->type = FUNCTION_DEFINITION_H;
-                    header->datatype = parse_datatype(tokens, i);
-                    header->name = calloc(50, 1);
-                    strncpy(header->name, tokens->tokens[*i]->value, 50);
-                    *i += 2;
-                    if (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {
-                        header->nodes = initialize_node_list(5);
-                        int node_index = 0;
-                        if (node_index >= header->nodes->capacity) {
-                            increase_node_list_capacity(block->nodes, block->nodes->capacity + 5);
-                        }
-                        while (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {
-                            header->nodes->nodes[node_index] = parse_statement(tokens, i);                           
-                            node_index++;
-                        }
-                    }
-                    (*i)++;
-                    if (tokens->tokens[*i]->type == SEMICOLON) {
-                        header->type = FUNCTION_DECLARATION_H;
-                        (*i)++;
+            case LEFT_BRACKET:
+                root_block->nodes->nodes[block_i] = parse_block(tokens, i, held_header);
+                held_header = NULL;
+                block_i++;
+                break;
+            case NONE:
+                return root_block;
+            default:
+                fg_bright_red();
+                fprintf(stderr, "i forgor 💀\n");
+                clear();
+                break;
+        }
+    }
 
-                        if (node_index >= block->nodes->capacity) {
-                            increase_node_list_capacity(block->nodes, block->nodes->capacity + 5);
+    return root_block;
+}
+
+// you call this improvement??????!?!?!??!?!?!?!?!?
+💀 parse_block(TokenList* tokens, int* i, 💀 function_header) {
+    💀 root_block = NULL;
+    💀 focus_block = NULL;
+    int focus_block_i = 0;
+    💀 held_header = NULL;
+    // FIXME: all blocks need to have resizable lists.
+    // I have 10 dads 💀;
+    NodeList* parent_stack = initialize_node_list(10);
+    int parent_indices[10] = {0};
+    int parent_stack_top = 0;
+    while (*i < tokens->length) {
+        Node current_node = {0};
+        switch (tokens->tokens[*i]->type) {
+            case LEFT_BRACKET:
+                (*i)++;
+                if (root_block == NULL) {
+                    root_block = create_node();
+                    parent_stack->nodes[0] = root_block;
+                    root_block->type = BLOCK;
+                    root_block->nodes = initialize_node_list(10);
+                    root_block->nodes->nodes[0] = function_header;
+                    parent_indices[0]++;
+                    function_header = NULL;
+                    focus_block = root_block;
+                } else {
+                    if (focus_block != root_block) {
+                        parent_stack_top++;
+                        Node* parent_node = parent_stack->nodes[parent_stack_top - 1];
+                        int parent_node_i = parent_indices[parent_stack_top - 1];
+                        if (parent_node_i >= parent_node->nodes->capacity) {
+                            increase_node_list_capacity(parent_node->nodes, parent_node->nodes->capacity + 5);
                         }
-                        block->nodes->nodes[node_index] = header;
-                        node_index++;
+                        parent_node->nodes->nodes[parent_node_i] = focus_block;
+                        parent_indices[parent_stack_top - 1]++;
+                        parent_stack->nodes[parent_stack_top] = focus_block;
+                        parent_indices[parent_stack_top] = focus_block_i;
                     }
-                }
+                    current_node.type = BLOCK;
+                    current_node.nodes = initialize_node_list(5);
+                    focus_block_i = 0;
+                    if (held_header != NULL) {
+                        current_node.nodes->nodes[0] = held_header;
+                        held_header = NULL;
+                        focus_block_i++;
+                    }
+                    focus_block = create_node();
+                    *focus_block = current_node;
+
+                    Node* parent_node = parent_stack->nodes[parent_stack_top];
+                    int parent_node_i = parent_indices[parent_stack_top];
+                    if (parent_node_i >= parent_node->nodes->capacity) {
+                        increase_node_list_capacity(parent_node->nodes, parent_node->nodes->capacity + 5);
+                    }
+                    parent_node->nodes->nodes[parent_node_i] = focus_block;
+                    parent_indices[parent_stack_top]++;
                 }
                 break;
             case RIGHT_BRACKET:
                 (*i)++;
-                return block;
+                if (focus_block == root_block) {
+                    return root_block;
+                }
+                focus_block = parent_stack->nodes[parent_stack_top];
+                if (focus_block != root_block) {
+                    parent_stack->nodes[parent_stack_top] = NULL;
+                    parent_indices[parent_stack_top] = 0;
+                    parent_stack_top--;
+                }
+                break;
+            case KEYWORD: 
+                if (!strncmp(tokens->tokens[*i]->value, "if", 2)) {
+                    held_header = parse_control_flow_header(tokens, i);
+                } else {
+                    if (focus_block == root_block) {
+                        if (parent_indices[0] >= root_block->nodes->capacity) {
+                            increase_node_list_capacity(root_block->nodes, root_block->nodes->capacity + 5);
+                        }
+                        root_block->nodes->nodes[parent_indices[0]] = parse_statement(tokens, i);
+                        parent_indices[0]++;
+                    } else {
+                        if (focus_block_i >= focus_block->nodes->capacity) {
+                            increase_node_list_capacity(focus_block->nodes, focus_block->nodes->capacity + 5);
+                        }
+                        focus_block->nodes->nodes[focus_block_i] = parse_statement(tokens, i);
+                        focus_block_i++;
+                    }
+                }
+                break;
             default:
+                if (focus_block == root_block) {
+                    if (parent_indices[0] >= root_block->nodes->capacity) {
+                        increase_node_list_capacity(root_block->nodes, root_block->nodes->capacity + 5);
+                    }
+                    root_block->nodes->nodes[parent_indices[0]] = parse_expression(tokens, i);
+                    parent_indices[0]++;
+                } else {
+                    if (focus_block_i >= focus_block->nodes->capacity) {
+                        increase_node_list_capacity(focus_block->nodes, focus_block->nodes->capacity + 5);
+                    }
+                    focus_block->nodes->nodes[focus_block_i] = parse_expression(tokens, i);
+                    focus_block_i++;
+                }
                 (*i)++;
                 break;
         }
     }
 
-    return block;
+    return root_block;
 }
+
+Node* parse_control_flow_header(TokenList* tokens, int* i) {
+    Node* header = create_node();
+    switch (tokens->tokens[*i]->type) {
+        case KEYWORD:
+            if (!strncmp(tokens->tokens[*i]->value, "if", 2)) {
+                header->type = IF_H;
+                (*i)++;
+                header->rhs = parse_expression(tokens, i);
+            }
+            break;
+        default:
+            fg_bright_red();
+            fprintf(stderr, "i forgor 💀\n");
+            clear();
+            break;
+    }
+
+    return header;
+}
+
+Node* parse_function_header(TokenList* tokens, int* i) {
+    Node* header = create_node();
+    switch (tokens->tokens[*i]->type) {   
+        case KEYWORD:
+            if (!strncmp(tokens->tokens[*i]->value, "int", 3)) {
+                header->datatype = parse_datatype(tokens, i);
+                header->name = calloc(50, 1);
+                strncpy(header->name, tokens->tokens[*i]->value, 50);
+                *i += 2;
+                if (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {
+                    header->nodes = initialize_node_list(5);
+                    int node_index = 0;
+                    if (node_index >= header->nodes->capacity) {
+                        increase_node_list_capacity(header->nodes, header->nodes->capacity + 5);
+                    }
+                    while (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {
+                        header->nodes->nodes[node_index] = parse_statement(tokens, i);                           
+                        node_index++;
+                    }
+                }
+                (*i)++;
+                if (tokens->tokens[*i]->type == SEMICOLON) {
+                    header->type = FUNCTION_DECLARATION_H;
+                    (*i)++;
+                } else {
+                    header->type = FUNCTION_DEFINITION_H;
+                }
+            }
+            break;
+        default:
+            fg_bright_red();
+            fprintf(stderr, "i forgor 💀\n");
+            clear();
+            break;
+    }
+
+    return header;
+}
+
+/*Node* parse_block(TokenList* tokens, int* i, Node* outer_block, int* outer_node_index) {*/
+/*    Node* header = NULL;*/
+/**/
+/*    while (*i < tokens->length) { */
+/*        switch (tokens->tokens[*i]->type) {*/
+/*            case LEFT_BRACKET:*/
+/*                {*/
+/*                Node* inner_block = create_node();*/
+/*                outer_block->nodes->nodes[*outer_node_index] = inner_block;*/
+/*                (*outer_node_index)++;*/
+/*                inner_block->type = BLOCK;*/
+/*                int inner_node_index = 0;*/
+/*                inner_block->nodes = initialize_node_list(5);*/
+/*                if (header != NULL)  {*/
+/*                    inner_block->nodes->nodes[0] = header;*/
+/*                    inner_node_index++;*/
+/*                }*/
+/**/
+/*                (*i)++;*/
+/*                while (tokens->tokens[*i]->type != RIGHT_BRACKET) {*/
+/*                    if (inner_node_index >= inner_block->nodes->capacity) {*/
+/*                        increase_node_list_capacity(inner_block->nodes, inner_block->nodes->capacity + 5);*/
+/*                    }*/
+/**/
+/*                    switch (tokens->tokens[*i]->type) {*/
+/*                        case KEYWORD:*/
+/*                            if (strncmp(tokens->tokens[*i]->value, "if", 2) == 0) {*/
+/*                            } else {*/
+/*                                inner_block->nodes->nodes[inner_node_index] = parse_statement(tokens, i);*/
+/*                                break;*/
+/*                            }*/
+/*                        case LEFT_BRACKET:*/
+/*                            inner_block = parse_block(tokens, i, inner_block, &inner_node_index);*/
+/*                            break;*/
+/*                        default:*/
+/*                            inner_block->nodes->nodes[inner_node_index] = parse_statement(tokens, i);*/
+/*                            break;*/
+/*                    }*/
+/*                    inner_node_index++;*/
+/*                }*/
+/*                }*/
+/*                break;*/
+/*            case KEYWORD:*/
+/*                {*/
+/*                if (strncmp(tokens->tokens[*i]->value, "if", 2) == 0) {*/
+/*                    header = create_node();*/
+/*                    header->type = IF_H;*/
+/*                    (*i)++;*/
+/*                    header->rhs = parse_expression(tokens, i);*/
+/*                // TODO: should also include other type keywords.*/
+/*                } else if (strncmp(tokens->tokens[*i]->value, "int", 3) == 0) {*/
+/*                    header = create_node();*/
+/*                    header->type = FUNCTION_DEFINITION_H;*/
+/*                    header->datatype = parse_datatype(tokens, i);*/
+/*                    header->name = calloc(50, 1);*/
+/*                    strncpy(header->name, tokens->tokens[*i]->value, 50);*/
+/*                    *i += 2;*/
+/*                    if (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {*/
+/*                        header->nodes = initialize_node_list(5);*/
+/*                        int node_index = 0;*/
+/*                        if (node_index >= header->nodes->capacity) {*/
+/*                            increase_node_list_capacity(header->nodes, header->nodes->capacity + 5);*/
+/*                        }*/
+/*                        while (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {*/
+/*                            header->nodes->nodes[node_index] = parse_statement(tokens, i);                           */
+/*                            node_index++;*/
+/*                        }*/
+/*                    }*/
+/*                    (*i)++;*/
+/*                    if (tokens->tokens[*i]->type == SEMICOLON) {*/
+/*                        header->type = FUNCTION_DECLARATION_H;*/
+/*                        (*i)++;*/
+/**/
+/*                        if (*outer_node_index >= outer_block->nodes->capacity) {*/
+/*                            increase_node_list_capacity(outer_block->nodes, outer_block->nodes->capacity + 5);*/
+/*                        }*/
+/*                        outer_block->nodes->nodes[*outer_node_index] = header;*/
+/*                        (*outer_node_index)++;*/
+/*                    }*/
+/*                }*/
+/*                }*/
+/*                break;*/
+/*            case RIGHT_BRACKET:*/
+/*                (*i)++;*/
+/*                return outer_block;*/
+/*            default:*/
+/*                (*i)++;*/
+/*                break;*/
+/*        }*/
+/*    }*/
+/**/
+/*    return outer_block;*/
+/*}*/
 
 Node* parse_statement(TokenList* tokens, int* i) {
     Node* statement = NULL;

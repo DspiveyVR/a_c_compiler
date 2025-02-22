@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
 
     int token_index = 0;
     /*Node* ast = create_node();*/
-    Node* ast = parse_block(&tokens, &token_index);
+    Node* ast = parse(&tokens, &token_index);
     /*ast->type = BLOCK;*/
     /*ast->nodes = initialize_node_list(5);*/
     /*int node_index = 0;*/
@@ -336,6 +336,64 @@ void print_datatype(TypeNode* type) {
     }
 }
 
+
+
+void enum_to_str(char* buf, TokenType type) {
+    switch (type) {
+        case KEYWORD:
+            strncpy(buf, "KEYWORD", 8);
+            break;
+        case IDENTIFIER:
+            strncpy(buf, "IDENTIFIER", 11);
+            break;
+        case COMMA: 
+            strncpy(buf, "COMMA", 6);
+            break;
+        case EQUALS: 
+            strncpy(buf, "EQUALS", 7);
+            break;
+        case EQUALS_EQUALS: 
+            strncpy(buf, "EQUALS_EQUALS", 14);
+            break;
+        case CONSTANT:
+            strncpy(buf, "CONSTANT", 9);
+            break;
+        case PLUS:
+            strncpy(buf, "PLUS", 5);
+            break;
+        case STAR:
+            strncpy(buf, "STAR", 5);
+            break;
+        case AMPERSAND:
+            strncpy(buf, "AMPERSAND", 10);
+            break;
+        case STRING_LITERAL:
+            strncpy(buf, "STRING_LITERAL", 15);
+            break;
+        case LEFT_PARENTHESIS:
+            strncpy(buf, "LEFT_PARENTHESIS", 17); 
+            break;
+        case RIGHT_PARENTHESIS:
+            strncpy(buf, "RIGHT_PARENTHESIS", 18);
+            break;
+        case LEFT_BRACKET:
+            strncpy(buf, "LEFT_BRACKET", 13);
+            break;
+        case RIGHT_BRACKET:
+            strncpy(buf, "RIGHT_BRACKET", 14);
+            break;
+        case SEMICOLON:
+            strncpy(buf, "SEMICOLON", 10);
+            break;
+        case INVALID:
+            strncpy(buf, "INVALID", 8);
+            break;
+        case NONE:
+            strncpy(buf, "I_FORGOR 💀\n", 15);
+            break;
+    }
+}
+
 /*
 void print_exp(Node* node) {
     if (node->lhs != NULL) {
@@ -390,59 +448,3 @@ int eval_exp(Node* node) {
     return -1;
 }
 */
-
-void enum_to_str(char* buf, TokenType type) {
-    switch (type) {
-        case KEYWORD:
-            strncpy(buf, "KEYWORD", 8);
-            break;
-        case IDENTIFIER:
-            strncpy(buf, "IDENTIFIER", 11);
-            break;
-        case COMMA: 
-            strncpy(buf, "COMMA", 6);
-            break;
-        case EQUALS: 
-            strncpy(buf, "EQUALS", 7);
-            break;
-        case EQUALS_EQUALS: 
-            strncpy(buf, "EQUALS_EQUALS", 14);
-            break;
-        case CONSTANT:
-            strncpy(buf, "CONSTANT", 9);
-            break;
-        case PLUS:
-            strncpy(buf, "PLUS", 5);
-            break;
-        case STAR:
-            strncpy(buf, "STAR", 5);
-            break;
-        case AMPERSAND:
-            strncpy(buf, "AMPERSAND", 10);
-            break;
-        case STRING_LITERAL:
-            strncpy(buf, "STRING_LITERAL", 15);
-            break;
-        case LEFT_PARENTHESIS:
-            strncpy(buf, "LEFT_PARENTHESIS", 17); 
-            break;
-        case RIGHT_PARENTHESIS:
-            strncpy(buf, "RIGHT_PARENTHESIS", 18);
-            break;
-        case LEFT_BRACKET:
-            strncpy(buf, "LEFT_BRACKET", 13);
-            break;
-        case RIGHT_BRACKET:
-            strncpy(buf, "RIGHT_BRACKET", 14);
-            break;
-        case SEMICOLON:
-            strncpy(buf, "SEMICOLON", 10);
-            break;
-        case INVALID:
-            strncpy(buf, "INVALID", 8);
-            break;
-        case NONE:
-            strncpy(buf, "NONE", 5);
-            break;
-    }
-}

@@ -66,9 +66,7 @@ typedef struct Node {
 
 Node* create_node();
 void destroy_node(Node* node);
-Node* parse_expression(TokenList* tokens);
-Node* parse_statement(TokenList* tokens, int* i);
-Node* parse_block(TokenList* tokens, int* i);
+Node* parse(TokenList* tokens, int* i);
 NodeList* initialize_node_list(int capacity);
 void destroy_node_list(NodeList* array);
 void increase_node_list_capacity(NodeList* array, int new_capacity);
