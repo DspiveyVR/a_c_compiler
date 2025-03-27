@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
 
     String asm_text;
     initialize_string(&asm_text, 100);
-    /*generate_assembly(&asm_text, ast);*/
+    generate_assembly(&asm_text, ast);
     destroy_node(ast);
     printf("%s", asm_text.string);
     FILE* asm_file;

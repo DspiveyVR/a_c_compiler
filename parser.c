@@ -108,9 +108,6 @@ Node* parse(TokenList* tokens, int* i) {
             case NONE:
                 return root_block;
             default:
-                fg_bright_red();
-                fprintf(stderr, "i forgor 💀\n");
-                clear();
                 break;
         }
     }
@@ -118,14 +115,12 @@ Node* parse(TokenList* tokens, int* i) {
     return root_block;
 }
 
-// you call this improvement??????!?!?!??!?!?!?!?!?
 💀 parse_block(TokenList* tokens, int* i, 💀 function_header) {
     💀 root_block = NULL;
     💀 focus_block = NULL;
     int focus_block_i = 0;
     💀 held_header = NULL;
     // FIXME: all blocks need to have resizable lists.
-    // I have 10 dads 💀;
     NodeList* parent_stack = initialize_node_list(10);
     int parent_indices[10] = {0};
     int parent_stack_top = 0;
@@ -179,6 +174,8 @@ Node* parse(TokenList* tokens, int* i) {
             case RIGHT_BRACKET:
                 (*i)++;
                 if (focus_block == root_block) {
+                    free(parent_stack->nodes);
+                    free(parent_stack);
                     return root_block;
                 }
                 focus_block = parent_stack->nodes[parent_stack_top];
@@ -226,7 +223,7 @@ Node* parse(TokenList* tokens, int* i) {
         }
     }
 
-    return root_block;
+    return NULL;
 }
 
 Node* parse_control_flow_header(TokenList* tokens, int* i) {
@@ -240,9 +237,6 @@ Node* parse_control_flow_header(TokenList* tokens, int* i) {
             }
             break;
         default:
-            fg_bright_red();
-            fprintf(stderr, "i forgor 💀\n");
-            clear();
             break;
     }
 
@@ -279,108 +273,11 @@ Node* parse_function_header(TokenList* tokens, int* i) {
             }
             break;
         default:
-            fg_bright_red();
-            fprintf(stderr, "i forgor 💀\n");
-            clear();
             break;
     }
 
     return header;
 }
-
-/*Node* parse_block(TokenList* tokens, int* i, Node* outer_block, int* outer_node_index) {*/
-/*    Node* header = NULL;*/
-/**/
-/*    while (*i < tokens->length) { */
-/*        switch (tokens->tokens[*i]->type) {*/
-/*            case LEFT_BRACKET:*/
-/*                {*/
-/*                Node* inner_block = create_node();*/
-/*                outer_block->nodes->nodes[*outer_node_index] = inner_block;*/
-/*                (*outer_node_index)++;*/
-/*                inner_block->type = BLOCK;*/
-/*                int inner_node_index = 0;*/
-/*                inner_block->nodes = initialize_node_list(5);*/
-/*                if (header != NULL)  {*/
-/*                    inner_block->nodes->nodes[0] = header;*/
-/*                    inner_node_index++;*/
-/*                }*/
-/**/
-/*                (*i)++;*/
-/*                while (tokens->tokens[*i]->type != RIGHT_BRACKET) {*/
-/*                    if (inner_node_index >= inner_block->nodes->capacity) {*/
-/*                        increase_node_list_capacity(inner_block->nodes, inner_block->nodes->capacity + 5);*/
-/*                    }*/
-/**/
-/*                    switch (tokens->tokens[*i]->type) {*/
-/*                        case KEYWORD:*/
-/*                            if (strncmp(tokens->tokens[*i]->value, "if", 2) == 0) {*/
-/*                            } else {*/
-/*                                inner_block->nodes->nodes[inner_node_index] = parse_statement(tokens, i);*/
-/*                                break;*/
-/*                            }*/
-/*                        case LEFT_BRACKET:*/
-/*                            inner_block = parse_block(tokens, i, inner_block, &inner_node_index);*/
-/*                            break;*/
-/*                        default:*/
-/*                            inner_block->nodes->nodes[inner_node_index] = parse_statement(tokens, i);*/
-/*                            break;*/
-/*                    }*/
-/*                    inner_node_index++;*/
-/*                }*/
-/*                }*/
-/*                break;*/
-/*            case KEYWORD:*/
-/*                {*/
-/*                if (strncmp(tokens->tokens[*i]->value, "if", 2) == 0) {*/
-/*                    header = create_node();*/
-/*                    header->type = IF_H;*/
-/*                    (*i)++;*/
-/*                    header->rhs = parse_expression(tokens, i);*/
-/*                // TODO: should also include other type keywords.*/
-/*                } else if (strncmp(tokens->tokens[*i]->value, "int", 3) == 0) {*/
-/*                    header = create_node();*/
-/*                    header->type = FUNCTION_DEFINITION_H;*/
-/*                    header->datatype = parse_datatype(tokens, i);*/
-/*                    header->name = calloc(50, 1);*/
-/*                    strncpy(header->name, tokens->tokens[*i]->value, 50);*/
-/*                    *i += 2;*/
-/*                    if (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {*/
-/*                        header->nodes = initialize_node_list(5);*/
-/*                        int node_index = 0;*/
-/*                        if (node_index >= header->nodes->capacity) {*/
-/*                            increase_node_list_capacity(header->nodes, header->nodes->capacity + 5);*/
-/*                        }*/
-/*                        while (tokens->tokens[*i]->type != RIGHT_PARENTHESIS) {*/
-/*                            header->nodes->nodes[node_index] = parse_statement(tokens, i);                           */
-/*                            node_index++;*/
-/*                        }*/
-/*                    }*/
-/*                    (*i)++;*/
-/*                    if (tokens->tokens[*i]->type == SEMICOLON) {*/
-/*                        header->type = FUNCTION_DECLARATION_H;*/
-/*                        (*i)++;*/
-/**/
-/*                        if (*outer_node_index >= outer_block->nodes->capacity) {*/
-/*                            increase_node_list_capacity(outer_block->nodes, outer_block->nodes->capacity + 5);*/
-/*                        }*/
-/*                        outer_block->nodes->nodes[*outer_node_index] = header;*/
-/*                        (*outer_node_index)++;*/
-/*                    }*/
-/*                }*/
-/*                }*/
-/*                break;*/
-/*            case RIGHT_BRACKET:*/
-/*                (*i)++;*/
-/*                return outer_block;*/
-/*            default:*/
-/*                (*i)++;*/
-/*                break;*/
-/*        }*/
-/*    }*/
-/**/
-/*    return outer_block;*/
-/*}*/
 
 Node* parse_statement(TokenList* tokens, int* i) {
     Node* statement = NULL;
@@ -461,6 +358,7 @@ TypeNode* parse_datatype(TokenList* tokens, int* i) {
     return type;
 }
 
+// FIXME: freaking function call causes a memory leak.
 Node* parse_expression(TokenList* tokens, int* i) {
     /*
         "expression" is the full binary tree, it is usually not directly
@@ -788,7 +686,7 @@ void destroy_node(Node* node) {
         destroy_node_list(node->nodes);
         free(node);
         return;
-    } else if (node->type == FUNCTION_DEFINITION_H) {
+    } else if ((node->type == FUNCTION_DEFINITION_H) || (node->type == FUNCTION_DECLARATION_H)) {
         if (node->nodes != NULL) {
             destroy_node_list(node->nodes);
         }
