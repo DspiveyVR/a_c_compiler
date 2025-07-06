@@ -66,7 +66,6 @@ typedef struct Node {
 
 } Node;
 
-typedef Node* 💀;
 Node* create_node();
 void destroy_node(Node* node);
 Node* parse_expression(TokenList* tokens, int* i);
@@ -76,7 +75,7 @@ Node* parse_statement(TokenList* tokens, int* i);
 NodeList* initialize_node_list(int capacity);
 void destroy_node_list(NodeList* array);
 void increase_node_list_capacity(NodeList* array, int new_capacity);
-💀 parse_block(TokenList* tokens, int* i, 💀 header);
+Node* parse_block(TokenList* tokens, int* i, Node* header);
 Node* parse_control_flow_header(TokenList* tokens, int* i);
 Node* parse_function_header(TokenList* tokens, int* i);
 
@@ -115,11 +114,11 @@ Node* parse(TokenList* tokens, int* i) {
     return root_block;
 }
 
-💀 parse_block(TokenList* tokens, int* i, 💀 function_header) {
-    💀 root_block = NULL;
-    💀 focus_block = NULL;
+Node* parse_block(TokenList* tokens, int* i, Node* function_header) {
+    Node* root_block = NULL;
+    Node* focus_block = NULL;
     int focus_block_i = 0;
-    💀 held_header = NULL;
+    Node* held_header = NULL;
     // FIXME: all blocks need to have resizable lists.
     NodeList* parent_stack = initialize_node_list(10);
     int parent_indices[10] = {0};
