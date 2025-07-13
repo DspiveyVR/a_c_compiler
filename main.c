@@ -1,12 +1,13 @@
+#include "code_generation.h"
+#include "colors.h"
+#include "dynamic_string.h"
+#include "lexer.h"
+#include "parser.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "lexer.h"
-#include "dynamic_string.h"
-#include "parser.h"
-#include "code_generation.h"
-#include "colors.h"
 
 void enum_to_str(char* buf, TokenType type);
 /*void print_exp(Node* node);*/
@@ -32,7 +33,7 @@ int main(int argc, char** argv) {
     while (!feof(infile)) {
         set_char(&file_text, fgetc(infile), i);
         i++;
-    } 
+    }
     set_char(&file_text, 0, i);
     fclose(infile);
 
@@ -56,19 +57,7 @@ int main(int argc, char** argv) {
     }
 
     int token_index = 0;
-    /*Node* ast = create_node();*/
     Node* ast = parse(&tokens, &token_index);
-    /*ast->type = BLOCK;*/
-    /*ast->nodes = initialize_node_list(5);*/
-    /*int node_index = 0;*/
-    /*while (token_index < tokens.length && tokens.tokens[token_index]->type != NONE) {*/
-    /*    if (node_index >= ast->nodes->capacity) {*/
-    /*        increase_node_list_capacity(ast->nodes, ast->nodes->capacity + 5);*/
-    /*    }*/
-    /*    ast->nodes->nodes[node_index] = parse_block(&tokens, &token_index);*/
-    /*    node_index++;*/
-    /*}*/
-    /*Node* block = parse_block(&tokens, &token_index);*/
     printf("\n");
     bg_magenta();
     bold();
@@ -78,21 +67,23 @@ int main(int argc, char** argv) {
     print_ast(ast, 0);
     destroy_token_list(&tokens);
 
-    String asm_text;
-    initialize_string(&asm_text, 100);
-    generate_assembly(&asm_text, ast);
-    destroy_node(ast);
-    printf("%s", asm_text.string);
-    FILE* asm_file;
-    asm_file = fopen("asm.s", "w");
-    if (asm_file == NULL) {
-        printf("error opening file\n");
-        exit(1);
+    bool generate = true;
+    if (generate) {
+        String asm_text;
+        initialize_string(&asm_text, 1000);
+        generate_assembly(&asm_text, ast);
+        printf("%s", asm_text.string);
+        FILE* asm_file;
+        asm_file = fopen("asm.s", "w");
+        if (asm_file == NULL) {
+            printf("error opening file\n");
+            exit(1);
+        }
+        fprintf(asm_file, "%s", asm_text.string);
+        fclose(asm_file);
+        destroy_string(&asm_text);
     }
-    fprintf(asm_file, "%s", asm_text.string);
-    fclose(asm_file);
-    destroy_string(&asm_text);
-
+    destroy_node(ast);
     return 0;
 }
 
@@ -104,206 +95,215 @@ void print_ast(Node* node, int indentation) {
     memset(indentation_str, ' ', indentation);
 
     switch (node->type) {
-        case BLOCK:
-            printf("\n");
-            printf("%s", indentation_str);
-            printf("BLOCK {\n");
+    case BLOCK:
+        printf("\n");
+        printf("%s", indentation_str);
+        printf("BLOCK {\n");
 
-            for (int i = 0; (i < node->nodes->capacity) && (node->nodes->nodes[i] != NULL); i++) {
-                switch (node->nodes->nodes[i]->type) {
-                    case BLOCK:
-                        print_ast(node->nodes->nodes[i], indentation + 2);
-                        break;
-                    default:
-                        {
-                        char indentation_str[16] = "";
-                        memset(indentation_str, ' ', indentation + 2);
-                        printf("%s", indentation_str);
-                        print_ast(node->nodes->nodes[i], indentation + 2);
-                        }
-                        break;
-                }
-                printf("\n");
+        for (int i = 0;
+             (i < node->nodes->capacity) && (node->nodes->nodes[i] != NULL);
+             i++) {
+            switch (node->nodes->nodes[i]->type) {
+            case BLOCK:
+                print_ast(node->nodes->nodes[i], indentation + 2);
+                break;
+            default: {
+                char indentation_str[16] = "";
+                memset(indentation_str, ' ', indentation + 2);
+                printf("%s", indentation_str);
+                print_ast(node->nodes->nodes[i], indentation + 2);
+            } break;
             }
-            printf("%s", indentation_str);
-            printf("}\n");
-            break;
-        case IF_H:
-            clear();
-            printf("IF(");
-            print_ast(node->rhs, indentation);
-            clear();
-            printf(")");
-            break;
-        case FUNCTION_DEFINITION_H:
-            clear();
-            printf("FUNCTION_DEFINITION_H(");
-            // FIXME: more datatypes later.
-            printf("(");
-            print_datatype(node->datatype);
-            printf(", \"%s\")", node->name);
-            if (node->nodes != NULL) {
-                printf(", ");
-                for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
-                    print_ast(node->nodes->nodes[i], indentation);
-                    if (node->nodes->nodes[i + 1] != NULL) {
-                        printf(", ");
-                    }
-                }
-            }
-            clear();
-            printf(")");
-            break;
-        case FUNCTION_DECLARATION_H:
-            clear();
-            printf("FUNCTION_DECLARATION_H(");
-            // FIXME: more datatypes later.
-            printf("(");
-            print_datatype(node->datatype);
-            printf(", \"%s\")", node->name);
-            if (node->nodes != NULL) {
-                printf(", ");
-                for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
-                    print_ast(node->nodes->nodes[i], indentation);
-                    if (node->nodes->nodes[i + 1] != NULL) {
-                        printf(", ");
-                    }
+            printf("\n");
+        }
+        printf("%s", indentation_str);
+        printf("}\n");
+        break;
+    case IF_H:
+        clear();
+        printf("IF(");
+        print_ast(node->rhs, indentation);
+        clear();
+        printf(")");
+        break;
+    case FUNCTION_DEFINITION_H:
+        clear();
+        printf("FUNCTION_DEFINITION_H(");
+        // FIXME: more datatypes later.
+        printf("(");
+        print_datatype(node->datatype);
+        printf(", \"%s\")", node->name);
+        if (node->nodes != NULL) {
+            printf(", ");
+            for (int i = 0;
+                 (i < node->nodes->capacity) && (node->nodes->nodes[i] != NULL);
+                 i++) {
+                print_ast(node->nodes->nodes[i], indentation);
+                if ((i < (node->nodes->capacity - 1)) &&
+                    (node->nodes->nodes[i + 1] != NULL)) {
+                    printf(", ");
                 }
             }
-            clear();
-            printf(")");
-            break;
-        case FUNCTION_CALL_E:
-            clear();
-            fg_bright_red();
-            printf("FUNCTION_CALL_E((\"%s\")", node->name);
-            if (node->nodes != NULL) {
-                clear();
-                printf(", ");
-                for (int i = 0; node->nodes->nodes[i] != NULL; i++) {
-                    print_ast(node->nodes->nodes[i], indentation);
-                    if (node->nodes->nodes[i + 1] != NULL) {
-                        clear();
-                        printf(", ");
-                    }
+        }
+        clear();
+        printf(")");
+        break;
+    case FUNCTION_DECLARATION_H:
+        clear();
+        printf("FUNCTION_DECLARATION_H(");
+        // FIXME: more datatypes later.
+        printf("(");
+        print_datatype(node->datatype);
+        printf(", \"%s\")", node->name);
+        if (node->nodes != NULL) {
+            printf(", ");
+            for (int i = 0;
+                 (i < node->nodes->capacity) && (node->nodes->nodes[i] != NULL);
+                 i++) {
+                print_ast(node->nodes->nodes[i], indentation);
+                if ((i < (node->nodes->capacity - 1)) &&
+                    (node->nodes->nodes[i + 1] != NULL)) {
+                    printf(", ");
                 }
             }
+        }
+        clear();
+        printf(")");
+        break;
+    case FUNCTION_CALL_E:
+        clear();
+        fg_bright_red();
+        printf("FUNCTION_CALL_E((\"%s\")", node->name);
+        if (node->nodes != NULL) {
             clear();
-            fg_bright_red();
-            printf(")");
-            break;
-        case INTEGER_E:
-            clear();
-            printf("%u", (uint32_t)node->value);
-            break;
-        case VARIABLE_E:
-            clear();
-            fg_green();
-            printf("%s", node->name);
-            break;
-        case ADDITION_E:
-            clear();
-            fg_cyan();
-            bold();
-            printf("ADD");
-            clear_bold();
-            dim();
-            printf("(");
-            print_ast(node->lhs, indentation);
-            clear();
-            fg_cyan();
-            dim();
-            printf(",");
-            print_ast(node->rhs, indentation);
-            clear();
-            fg_cyan();
-            dim();
-            printf(")");
-            break;
-        case MULTIPLICATION_E:
-            clear();
-            fg_bright_red();
-            bold();
-            printf("MUL");
-            clear_bold();
-            dim();
-            printf("(");
-            print_ast(node->lhs, indentation);
-            clear();
-            fg_bright_red();
-            dim();
-            printf(",");
-            print_ast(node->rhs, indentation);
-            clear();
-            fg_bright_red();
-            dim();
-            printf(")");
-            break;
-        case DEREFERENCE_E:
-            printf("DEREF(");
-            print_ast(node->rhs, indentation);
-            printf(")");
-            break;
-        case ADDRESS_OF_E:
-            printf("ADDR(");
-            print_ast(node->rhs, indentation);
-            printf(")");
-            break;
-        case LOGICAL_EQUALS_E:
-            clear();
-            fg_bright_red();
-            bold();
-            printf("L_EQ");
-            clear_bold();
-            dim();
-            printf("(");
-            print_ast(node->lhs, indentation);
-            clear();
-            fg_bright_red();
-            dim();
-            printf(",");
-            print_ast(node->rhs, indentation);
-            clear();
-            fg_bright_red();
-            dim();
-            printf(")");
-            break;
-        case OPEN_PARENTHESIS_E:
-            print_ast(node->rhs, indentation);
-            break;
-        case CLOSE_PARENTHESIS_E:
-            break;
-        case VARIABLE_DECLARATION_S:
-            clear();           
-            // INT is only type so it's hardcoded for now.
-            printf("VAR_DECLARATION(");
-            print_datatype(node->datatype);
-            printf(", %s)", node->name);
-            break;
-        case ASSIGNMENT_E:
-            clear();
-            printf("ASSIGNMENT(");
-            print_ast(node->lhs, indentation);
-            clear();
-            printf(",");
-            print_ast(node->rhs, indentation);
-            clear();
-            printf(")");
-            break;
-        case RETURN_S:
-            clear();
-            printf("RETURN(");
-            print_ast(node->rhs, indentation);
-            clear();
-            printf(")");
-            break;
-        case ARGUMENT_E:
-            print_ast(node->rhs, indentation);
-            break;
-        case NONETYPE:
-            clear(); 
-            printf("NONETYPE");
-            break;
+            printf(", ");
+            for (int i = 0;
+                 (i < node->nodes->capacity) && (node->nodes->nodes[i] != NULL);
+                 i++) {
+                print_ast(node->nodes->nodes[i], indentation);
+                if ((i < (node->nodes->capacity - 1)) &&
+                    (node->nodes->nodes[i + 1] != NULL)) {
+                    clear();
+                    printf(", ");
+                }
+            }
+        }
+        clear();
+        fg_bright_red();
+        printf(")");
+        break;
+    case INTEGER_E:
+        clear();
+        printf("%u", (uint32_t)node->value);
+        break;
+    case VARIABLE_E:
+        clear();
+        fg_green();
+        printf("%s", node->name);
+        break;
+    case ADDITION_E:
+        clear();
+        fg_cyan();
+        bold();
+        printf("ADD");
+        clear_bold();
+        dim();
+        printf("(");
+        print_ast(node->lhs, indentation);
+        clear();
+        fg_cyan();
+        dim();
+        printf(",");
+        print_ast(node->rhs, indentation);
+        clear();
+        fg_cyan();
+        dim();
+        printf(")");
+        break;
+    case MULTIPLICATION_E:
+        clear();
+        fg_bright_red();
+        bold();
+        printf("MUL");
+        clear_bold();
+        dim();
+        printf("(");
+        print_ast(node->lhs, indentation);
+        clear();
+        fg_bright_red();
+        dim();
+        printf(",");
+        print_ast(node->rhs, indentation);
+        clear();
+        fg_bright_red();
+        dim();
+        printf(")");
+        break;
+    case DEREFERENCE_E:
+        printf("DEREF(");
+        print_ast(node->rhs, indentation);
+        printf(")");
+        break;
+    case ADDRESS_OF_E:
+        printf("ADDR(");
+        print_ast(node->rhs, indentation);
+        printf(")");
+        break;
+    case LOGICAL_EQUALS_E:
+        clear();
+        fg_bright_red();
+        bold();
+        printf("L_EQ");
+        clear_bold();
+        dim();
+        printf("(");
+        print_ast(node->lhs, indentation);
+        clear();
+        fg_bright_red();
+        dim();
+        printf(",");
+        print_ast(node->rhs, indentation);
+        clear();
+        fg_bright_red();
+        dim();
+        printf(")");
+        break;
+    case OPEN_PARENTHESIS_E:
+        print_ast(node->rhs, indentation);
+        break;
+    case CLOSE_PARENTHESIS_E:
+        break;
+    case VARIABLE_DECLARATION_S:
+        clear();
+        // INT is only type so it's hardcoded for now.
+        printf("VAR_DECLARATION(");
+        print_datatype(node->datatype);
+        printf(", %s)", node->name);
+        break;
+    case ASSIGNMENT_E:
+        clear();
+        printf("ASSIGNMENT(");
+        print_ast(node->lhs, indentation);
+        clear();
+        printf(",");
+        print_ast(node->rhs, indentation);
+        clear();
+        printf(")");
+        break;
+    case RETURN_S:
+        clear();
+        printf("RETURN(");
+        print_ast(node->rhs, indentation);
+        clear();
+        printf(")");
+        break;
+    case ARGUMENT_E:
+        print_ast(node->rhs, indentation);
+        break;
+    case NONETYPE:
+        clear();
+        printf("NONETYPE");
+        break;
     }
 
     return;
@@ -311,86 +311,84 @@ void print_ast(Node* node, int indentation) {
 
 void print_datatype(TypeNode* type) {
     switch (type->datatype) {
-        case INT:
-            printf("INT");
-            break;
-        case CHAR:
-            printf("CHAR");
-            break;       
-        case FLOAT:
-            printf("FLOAT");
-            break;
-        case DOUBLE:
-            printf("DOUBLE");
-            break;
-        case VOID:
-            printf("VOID");
-            break;
-        case PTR:
-            printf("PTR(");
-            print_datatype(type->points_to);
-            printf(")");
-            break;
-        default: 
-            break;
+    case INT:
+        printf("INT");
+        break;
+    case CHAR:
+        printf("CHAR");
+        break;
+    case FLOAT:
+        printf("FLOAT");
+        break;
+    case DOUBLE:
+        printf("DOUBLE");
+        break;
+    case VOID:
+        printf("VOID");
+        break;
+    case PTR:
+        printf("PTR(");
+        print_datatype(type->points_to);
+        printf(")");
+        break;
+    default:
+        break;
     }
 }
 
-
-
 void enum_to_str(char* buf, TokenType type) {
     switch (type) {
-        case KEYWORD:
-            strncpy(buf, "KEYWORD", 8);
-            break;
-        case IDENTIFIER:
-            strncpy(buf, "IDENTIFIER", 11);
-            break;
-        case COMMA: 
-            strncpy(buf, "COMMA", 6);
-            break;
-        case EQUALS: 
-            strncpy(buf, "EQUALS", 7);
-            break;
-        case EQUALS_EQUALS: 
-            strncpy(buf, "EQUALS_EQUALS", 14);
-            break;
-        case CONSTANT:
-            strncpy(buf, "CONSTANT", 9);
-            break;
-        case PLUS:
-            strncpy(buf, "PLUS", 5);
-            break;
-        case STAR:
-            strncpy(buf, "STAR", 5);
-            break;
-        case AMPERSAND:
-            strncpy(buf, "AMPERSAND", 10);
-            break;
-        case STRING_LITERAL:
-            strncpy(buf, "STRING_LITERAL", 15);
-            break;
-        case LEFT_PARENTHESIS:
-            strncpy(buf, "LEFT_PARENTHESIS", 17); 
-            break;
-        case RIGHT_PARENTHESIS:
-            strncpy(buf, "RIGHT_PARENTHESIS", 18);
-            break;
-        case LEFT_BRACKET:
-            strncpy(buf, "LEFT_BRACKET", 13);
-            break;
-        case RIGHT_BRACKET:
-            strncpy(buf, "RIGHT_BRACKET", 14);
-            break;
-        case SEMICOLON:
-            strncpy(buf, "SEMICOLON", 10);
-            break;
-        case INVALID:
-            strncpy(buf, "INVALID", 8);
-            break;
-        case NONE:
-            strncpy(buf, "I_FORGOR 💀\n", 15);
-            break;
+    case KEYWORD:
+        strncpy(buf, "KEYWORD", 8);
+        break;
+    case IDENTIFIER:
+        strncpy(buf, "IDENTIFIER", 11);
+        break;
+    case COMMA:
+        strncpy(buf, "COMMA", 6);
+        break;
+    case EQUALS:
+        strncpy(buf, "EQUALS", 7);
+        break;
+    case EQUALS_EQUALS:
+        strncpy(buf, "EQUALS_EQUALS", 14);
+        break;
+    case CONSTANT:
+        strncpy(buf, "CONSTANT", 9);
+        break;
+    case PLUS:
+        strncpy(buf, "PLUS", 5);
+        break;
+    case STAR:
+        strncpy(buf, "STAR", 5);
+        break;
+    case AMPERSAND:
+        strncpy(buf, "AMPERSAND", 10);
+        break;
+    case STRING_LITERAL:
+        strncpy(buf, "STRING_LITERAL", 15);
+        break;
+    case LEFT_PARENTHESIS:
+        strncpy(buf, "LEFT_PARENTHESIS", 17);
+        break;
+    case RIGHT_PARENTHESIS:
+        strncpy(buf, "RIGHT_PARENTHESIS", 18);
+        break;
+    case LEFT_BRACKET:
+        strncpy(buf, "LEFT_BRACKET", 13);
+        break;
+    case RIGHT_BRACKET:
+        strncpy(buf, "RIGHT_BRACKET", 14);
+        break;
+    case SEMICOLON:
+        strncpy(buf, "SEMICOLON", 10);
+        break;
+    case INVALID:
+        strncpy(buf, "INVALID", 8);
+        break;
+    case NONE:
+        strncpy(buf, "I_FORGOR 💀\n", 15);
+        break;
     }
 }
 

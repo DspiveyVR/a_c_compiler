@@ -1,16 +1,10 @@
-int sum(int a, int b, int c, int d);
+int sum(int* a, int b);
 
 int main() {
     int a;
-    a = 3;
-    if (a == 3) {
-        a = sum(1, 2, a, 4);
-    }
-    int* b;
-    b = &a;
-    return *b;
+    a = 4;
+
+    return sum(&a, 2);
 }
 
-int sum(int a, int b, int c, int d) {
-    return a + b + c + d;
-}
+int sum(int* a, int b) { return *a + b; }
