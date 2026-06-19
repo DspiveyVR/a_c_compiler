@@ -175,6 +175,9 @@ end_loop:
         } else if (strncmp(words.list[i]->string, "if", 6) == 0) {
             set_tklist_type(tokens, i, KEYWORD);
             set_tklist_string(tokens, i, "if");
+        } else if (strncmp(words.list[i]->string, "struct", 6) == 0) {
+            set_tklist_type(tokens, i, KEYWORD);
+            set_tklist_string(tokens, i, "struct");
         } else if (strncmp(words.list[i]->string, "==", 2) == 0) {
             set_tklist_type(tokens, i, EQUALS_EQUALS);
         } else if (strncmp(words.list[i]->string, "=", 1) == 0) {

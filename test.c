@@ -1,10 +1,14 @@
-int sum(int* a, int b);
+void assign(int** a);
 
 int main() {
     int a;
     a = 4;
 
-    return sum(&a, 2);
+    int* b;
+    b = &a;
+
+    assign(&b);
+    return a;
 }
 
-int sum(int* a, int b) { return *a + b; }
+void assign(int** a) { **a = 7; }

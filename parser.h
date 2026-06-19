@@ -33,6 +33,7 @@ typedef enum DataType {
     FLOAT,
     DOUBLE,
     PTR,
+    STRUCT
 } DataType;
 
 struct Node;

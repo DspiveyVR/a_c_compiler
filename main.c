@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
     print_ast(ast, 0);
     destroy_token_list(&tokens);
 
-    bool generate = true;
+    bool generate = false;
     if (generate) {
         String asm_text;
         initialize_string(&asm_text, 1000);

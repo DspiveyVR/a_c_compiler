@@ -27,14 +27,7 @@ typedef enum NodeType {
     BLOCK,
 } NodeType;
 
-typedef enum DataType {
-    VOID,
-    INT,
-    CHAR,
-    FLOAT,
-    DOUBLE,
-    PTR,
-} DataType;
+typedef enum DataType { VOID, INT, CHAR, FLOAT, DOUBLE, PTR, STRUCT } DataType;
 
 struct Node;
 typedef struct NodeList {
@@ -42,10 +35,18 @@ typedef struct NodeList {
     int capacity;
 } NodeList;
 
+typedef struct StructBody {
+    char* name;
+    NodeList fields;
+} Struct;
+
 typedef struct TypeNode {
     DataType datatype;
     uint8_t size;
-    struct TypeNode* points_to;
+    union {
+        struct TypeNode* points_to;
+        struct StructBody* struct_body;
+    };
 } TypeNode;
 
 typedef struct Node {
@@ -95,6 +96,7 @@ Node* parse(TokenList* tokens, int* i) {
                     root_block->nodes->nodes[block_i] = held_header;
                     held_header = NULL;
                     block_i++;
+                } else if (!strncmp(tokens->tokens[*i]->value, "struct", 6)) {
                 }
             }
             break;
