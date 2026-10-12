@@ -1,0 +1,41 @@
+#ifndef LEXER_H
+#define LEXER_H
+#include "dynamic_string.h"
+
+typedef enum TokenType {
+    NONE,
+    KEYWORD,
+    IDENTIFIER,
+    EQUALS,
+    EQUALS_EQUALS,
+    CONSTANT,
+    STRING_LITERAL,
+    LEFT_PARENTHESIS,
+    RIGHT_PARENTHESIS,
+    LEFT_BRACKET,
+    RIGHT_BRACKET,
+    SEMICOLON,
+    COMMA,
+    PLUS,
+    STAR,
+    AMPERSAND,
+    INVALID,
+} TokenType;
+
+typedef struct Token {
+    TokenType type;
+    char* value;
+} Token;
+
+typedef struct TokenList {
+    Token** tokens;
+    int length;
+} TokenList;
+
+void lex(TokenList* tokens, String* file_text);
+void initialize_token_list(TokenList* array, int length);
+void destroy_token_list(TokenList* array);
+void set_tklist_string(TokenList* array, int index, char* string);
+void set_tklist_type(TokenList* array, int index, TokenType type);
+
+#endif
